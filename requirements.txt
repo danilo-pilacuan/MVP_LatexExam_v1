@@ -1,0 +1,13 @@
+langgraph>=1.2.0,<2.0.0
+langchain>=1.0.0,<2.0.0
+langchain-openai>=0.3.0
+langchain-postgres>=0.0.12
+pydantic>=2.10.0
+pydantic-settings>=2.6.0
+pgvector>=0.3.0
+psycopg2-binary>=2.9.9
+sqlalchemy>=2.0.0
+alembic>=1.14.0
+pymupdf>=1.24.0
+python-dotenv>=1.0.1
+requests>=2.31.0

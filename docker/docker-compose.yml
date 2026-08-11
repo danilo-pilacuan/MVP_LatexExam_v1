@@ -1,0 +1,29 @@
+services:
+  # BDD
+  postgres-db:
+    image: pgvector/pgvector:pg16
+    container_name: exam_postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: exam_user
+      POSTGRES_PASSWORD: exam_password
+      POSTGRES_DB: exam_generator_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # Compilador latex
+  latex-compiler:
+    build:
+      context: ./latex-compiler
+      dockerfile: Dockerfile
+    container_name: exam_latex_compiler
+    restart: always
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../data/agent_outputs:/app/output
+
+volumes:
+  postgres_data:
