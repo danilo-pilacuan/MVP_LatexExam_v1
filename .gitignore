@@ -146,3 +146,5 @@ coverage/
 .nyc_output/
 .temp/
 .tmp/
+
+data/inputs/**

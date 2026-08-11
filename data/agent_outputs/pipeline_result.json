@@ -1,0 +1,204 @@
+{
+  "status": "completed",
+  "error_message": null,
+  "indexed_chunks_count": 102,
+  "approved_items": [
+    {
+      "topic": "Estudio de Mercado",
+      "subtopic": "Marketing Mix",
+      "bloom_level": "recordar",
+      "difficulty": "facil",
+      "question_type": "opcion_multiple",
+      "statement": "En el contexto del estudio de mercado, el Marketing Mix se refiere a:",
+      "options": [
+        {
+          "text": "Un conjunto de acciones planificadas alrededor de cuatro variables fundamentales: producto, precio, plaza y promoción.",
+          "is_correct": true
+        },
+        {
+          "text": "Un análisis exclusivo de los precios de los competidores en el mercado.",
+          "is_correct": false
+        },
+        {
+          "text": "Una herramienta para calcular los costos de producción y embalaje del producto.",
+          "is_correct": false
+        },
+        {
+          "text": "Un método para seleccionar los canales de distribución y venta del producto.",
+          "is_correct": false
+        }
+      ],
+      "expected_answer": "Un conjunto de acciones planificadas alrededor de cuatro variables fundamentales: producto, precio, plaza y promoción.",
+      "solution_explanation": "Según el material de estudio, el Marketing Mix es la caja de herramientas que hace referencia a un conjunto de acciones que deben planificarse alrededor de cuatro variables fundamentales para la gestión de una empresa o proyecto: producto, precio, plaza y promoción. Las otras opciones mencionan elementos que forman parte de alguna de estas variables, pero no definen el concepto completo del Marketing Mix.",
+      "points": 1.0
+    },
+    {
+      "topic": "Estudio de Mercado",
+      "subtopic": "General",
+      "bloom_level": "recordar",
+      "difficulty": "medio",
+      "question_type": "verdadero_falso",
+      "statement": "El Estudio de Mercado se realiza después de la formulación del proyecto, para confirmar la viabilidad económica del emprendimiento.",
+      "options": [
+        {
+          "text": "Verdadero",
+          "is_correct": false
+        },
+        {
+          "text": "Falso",
+          "is_correct": true
+        }
+      ],
+      "expected_answer": "Falso",
+      "solution_explanation": "Según el material, el Estudio de Mercado se realiza ANTES de la formulación del proyecto, para verificar la viabilidad económica del emprendimiento.",
+      "points": 1.0
+    },
+    {
+      "topic": "Estudio de Mercado",
+      "subtopic": "Marketing Mix",
+      "bloom_level": "comprender",
+      "difficulty": "facil",
+      "question_type": "opcion_multiple",
+      "statement": "En el contexto del Marketing Mix, la variable 'plaza' se refiere a:",
+      "options": [
+        {
+          "text": "Las estrategias de publicidad y promoción para dar a conocer el producto.",
+          "is_correct": false
+        },
+        {
+          "text": "La fijación del precio considerando costos y márgenes de ganancia.",
+          "is_correct": false
+        },
+        {
+          "text": "La distribución del producto, incluyendo canales de venta y zonas de entrega.",
+          "is_correct": true
+        },
+        {
+          "text": "Las características del producto, como marca, logo y presentación.",
+          "is_correct": false
+        }
+      ],
+      "expected_answer": "La distribución del producto, incluyendo canales de venta y zonas de entrega.",
+      "solution_explanation": "Según el material de estudio, la plaza o distribución se refiere a cómo y dónde se ofrece el producto: zonas de la ciudad, canales de venta (domicilio, motomandados, etc.) y forma de toma de pedidos. Las demás opciones corresponden a promoción, precio y producto respectivamente.",
+      "points": 1.0
+    },
+    {
+      "topic": "Flujos Financieros",
+      "subtopic": "Marketing Mix y flujos de ingresos",
+      "bloom_level": "comprender",
+      "difficulty": "medio",
+      "question_type": "opcion_multiple",
+      "statement": "En el estudio de mercado para un plan de negocios, el análisis del Marketing Mix (producto, precio, plaza y promoción) permite proyectar los flujos financieros del emprendimiento. Si una empresa decide ofrecer descuentos por pago de contado y cobrar en cuotas, esta decisión afecta directamente a:",
+      "options": [
+        {
+          "text": "El flujo de egresos por concepto de compra de materias primas.",
+          "is_correct": false
+        },
+        {
+          "text": "El flujo de ingresos, ya que modifica el momento y el monto de los cobros.",
+          "is_correct": true
+        },
+        {
+          "text": "El flujo de inversión inicial en maquinaria y equipo.",
+          "is_correct": false
+        },
+        {
+          "text": "El flujo de caja operativo, pero solo por el lado de los costos de distribución.",
+          "is_correct": false
+        }
+      ],
+      "expected_answer": "B",
+      "solution_explanation": "La decisión sobre descuentos y plazos de cobro (precio) altera la temporalidad y magnitud de las entradas de efectivo, lo que impacta directamente el flujo de ingresos proyectado en el estudio financiero.",
+      "points": 1.0
+    },
+    {
+      "topic": "Flujos Financieros",
+      "subtopic": "Marketing Mix: Precio",
+      "bloom_level": "aplicar",
+      "difficulty": "facil",
+      "question_type": "desarrollo",
+      "statement": "Usted es el dueño de una pequeña empresa que produce y vende artesanías. Para calcular el precio de venta de uno de sus productos, ha determinado que el costo total de producir una unidad (incluyendo materiales, embalaje y envío) es de $5.000. Si usted desea obtener un margen de ganancia del 40% sobre el costo, ¿cuál sería el precio final de venta de cada artesanía? Justifique su respuesta mostrando el cálculo realizado.",
+      "options": [],
+      "expected_answer": "El precio final de venta se calcula sumando al costo el margen de ganancia deseado. Primero se calcula el margen: 40% de $5.000 = $2.000. Luego se suma al costo: $5.000 + $2.000 = $7.000. Por lo tanto, el precio de venta de cada artesanía debe ser de $7.000.",
+      "solution_explanation": "Esta pregunta aplica el concepto de fijación de precios basado en costo más margen, tal como se menciona en el syllabus. El estudiante debe identificar el costo total, calcular el margen porcentual sobre el costo y sumarlo para obtener el precio final.",
+      "points": 1.0
+    },
+    {
+      "topic": "Análisis Económico-Financiero",
+      "subtopic": "Marketing Mix",
+      "bloom_level": "aplicar",
+      "difficulty": "medio",
+      "question_type": "opcion_multiple",
+      "statement": "Un emprendedor planea vender mermeladas artesanales. Para fijar el precio de cada frasco, calculó que el costo total unitario (materia prima, envase, etiqueta y mano de obra) es de S/ 8.50. Si desea obtener un margen de ganancia del 40% sobre el costo, ¿cuál será el precio de venta unitario?",
+      "options": [
+        {
+          "text": "S/ 11.90",
+          "is_correct": true
+        },
+        {
+          "text": "S/ 10.50",
+          "is_correct": false
+        },
+        {
+          "text": "S/ 12.00",
+          "is_correct": false
+        },
+        {
+          "text": "S/ 13.60",
+          "is_correct": false
+        }
+      ],
+      "expected_answer": "S/ 11.90",
+      "solution_explanation": "Para calcular el precio de venta con un margen del 40% sobre el costo, se multiplica el costo unitario por 1.40: 8.50 × 1.40 = 11.90. Las otras opciones no reflejan correctamente el margen solicitado.",
+      "points": 1.0
+    },
+    {
+      "topic": "Fijación de Precios",
+      "subtopic": "Estrategias de fijación de precios en el Marketing Mix",
+      "bloom_level": "analizar",
+      "difficulty": "medio",
+      "question_type": "opcion_multiple",
+      "statement": "Una empresa local de bebidas artesanales está analizando su estrategia de precios. Observa que su principal competidor, una marca internacional, ajusta sus precios según la región y las condiciones económicas locales, logrando mantener su participación de mercado. La empresa artesanal, por su parte, fija sus precios únicamente con base en sus costos y un margen fijo del 30%, sin considerar la demanda ni los precios de la competencia. Según el enfoque del Marketing Mix y la información del estudio de mercado, ¿cuál es la principal debilidad de la estrategia actual de la empresa artesanal?",
+      "options": [
+        {
+          "text": "No está considerando los descuentos por cantidad ni las modalidades de pago, lo que reduce sus ventas.",
+          "is_correct": false
+        },
+        {
+          "text": "Su precio no se adapta dinámicamente al mercado, lo que puede llevarla a perder clientes o dejar de capturar mayor margen.",
+          "is_correct": true
+        },
+        {
+          "text": "El margen fijo del 30% es demasiado alto para el sector de bebidas, lo que la hace poco competitiva.",
+          "is_correct": false
+        },
+        {
+          "text": "La empresa no está utilizando publicidad para justificar un precio más alto que el de su competidor.",
+          "is_correct": false
+        }
+      ],
+      "expected_answer": "Su precio no se adapta dinámicamente al mercado, lo que puede llevarla a perder clientes o dejar de capturar mayor margen.",
+      "solution_explanation": "El caso contrasta la estrategia de Coca Cola (precios competitivos ajustados al mercado y situación económica) con la de la empresa artesanal (precio basado solo en costo + margen). Analizar esta situación requiere identificar que la fijación de precios debe considerar variables externas como demanda y competencia, tal como se menciona en el estudio de mercado. La debilidad principal es la rigidez del precio frente a un entorno dinámico, no aspectos secundarios como descuentos, el nivel del margen o la publicidad.",
+      "points": 1.0
+    }
+  ],
+  "rejection_log": [
+    {
+      "spec_id": "a667511b",
+      "attempt_number": 1,
+      "reason": "low_quality",
+      "quality_score": 3.0,
+      "similarity_score": 0.0
+    }
+  ],
+  "total_llm_calls": 16,
+  "compilation_attempts": 1,
+  "compilation_log": [
+    {
+      "attempt_number": 1,
+      "success": true,
+      "error_excerpt": null
+    }
+  ],
+  "pdf_path": "/app/output/f0abb2b0-f625-4bff-bd5f-9c4c7148f4ab.pdf"
+}
