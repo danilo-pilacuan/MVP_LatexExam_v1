@@ -41,9 +41,28 @@ def render_item(item: GeneratedItem) -> str:
 
     return block
 
-def render_exam(exam: CompiledExam, template_id: TemplateId, subject_name: str, instructions: str) -> str:
+def render_exam(
+    exam: CompiledExam,
+    template_id: TemplateId,
+    subject_name: str,
+    instructions: str,
+    department: str = "",
+    exam_date: str = "",
+    exam_time: str = "",
+    examiner_name: str = "",
+    duration_minutes: int = 90,
+    print_answers: bool = True,
+) -> str:
     template_path = get_template_path(template_id)
-    env = Environment(loader=FileSystemLoader(template_path.parent))
+    # Las macros LaTeX \newcommand{...}{#1} contienen '{#', que Jinja
+    # interpretaría como inicio de comentario. Cambiamos SOLO el delimitador
+    # de comentario a uno sin colisión; los de variable {{ }} y bloque {% %}
+    # se mantienen (el template ya los usa).
+    env = Environment(
+        loader=FileSystemLoader(template_path.parent),
+        comment_start_string="<#",
+        comment_end_string="#>",
+    )
     template = env.get_template(template_path.name)
 
     questions_block = "\n".join(render_item(item) for item in exam.items)
@@ -51,7 +70,13 @@ def render_exam(exam: CompiledExam, template_id: TemplateId, subject_name: str, 
     return template.render(
         subject_name=escape_latex(subject_name),
         exam_title=escape_latex(f"Examen — {subject_name}"),
+        department=escape_latex(department),
+        exam_date=escape_latex(exam_date),
+        exam_time=escape_latex(exam_time),
+        duration=escape_latex(f"{duration_minutes} minutos"),
+        examiner_name=escape_latex(examiner_name),
         instructions=escape_latex(instructions),
         questions_block=questions_block,
+        print_answers=print_answers,
         include_answer_key=True,
     )

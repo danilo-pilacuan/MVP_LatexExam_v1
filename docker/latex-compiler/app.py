@@ -24,15 +24,21 @@ def compile_latex(req: CompileRequest):
         f.write(req.latex_code)
 
     try:
-        # Ejecutar pdflatex en modo no interactivo
-        result = subprocess.run(
-            ["pdflatex", "-interaction=nonstopmode", "-output-directory", work_dir, tex_path],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            timeout=30
-        )
-        
-        if result.returncode == 0 and os.path.exists(pdf_path):
+        # Ejecutar pdflatex DOS veces: la primera genera el .aux con los
+        # totales de puntos/referencias, la segunda los resuelve. Sin la
+        # segunda pasada, pdflatex termina con "Rerun to get ... right"
+        # (returncode != 0) aunque el PDF ya esté generado.
+        for _ in range(2):
+            result = subprocess.run(
+                ["pdflatex", "-interaction=nonstopmode", "-output-directory", work_dir, tex_path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=30
+            )
+
+        # Consideramos éxito si el PDF se generó, aunque returncode != 0
+        # (puede haber warnings no fatales de "rerun" o overfull hbox).
+        if os.path.exists(pdf_path):
             output_dest = f"/app/output/{job_id}.pdf"
             # Ensure output dir exists (bind mount may not be present at first run)
             os.makedirs("/app/output", exist_ok=True)
