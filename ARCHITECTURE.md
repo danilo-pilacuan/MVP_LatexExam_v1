@@ -4,6 +4,8 @@
 > **Tesis:** USFQ
 > **Fecha de documentación:** 2026-08-11
 
+Repo de referencia con material de estudio: https://github.com/tobiager/UNNE-LSI/tree/main
+
 ---
 
 ## 📋 Tabla de contenidos
@@ -117,9 +119,48 @@ graph TB
 | Componente | Tecnología | Ubicación | Puerto |
 |---|---|---|---|
 | **Aplicación principal** | Python + LangGraph | `MVP_v1/` | — |
+| **API** | FastAPI | `main.py` | `8000` |
 | **LLM local** | vLLM + DeepSeek-V4-Flash-0731 | `172.28.230.10` | `12555` |
 | **Base de datos** | PostgreSQL 16 + pgvector | Docker (`postgres-db`) | `5432` |
 | **Compilador LaTeX** | FastAPI + TeXLive | Docker (`latex-compiler`) | `8080` |
+| **Servicio de embeddings** | FastAPI + sentence-transformers (bge-m3) | Docker (`embedding-service`) | `8081` |
+
+---
+
+## 🧠 RAG (Retrieval-Augmented Generation)
+
+El sistema usa **RAG** para que el LLM no tenga que leer todo el material cada vez. En lugar de eso, el material se **indexa una vez** (con embeddings) en la BD, y al generar cada pregunta se **recuperan solo los fragmentos relevantes**.
+
+```mermaid
+graph LR
+    subgraph "FASE 1: INDEXACIÓN (una vez)"
+        MAT[Material de la materia] --> EXT[Extraer texto]
+        EXT --> CH[Chunking]
+        CH --> EMB[Servicio embeddings<br/>bge-m3 1024d]
+        EMB --> DB2[(material_chunks<br/>+ pgvector)]
+    end
+
+    subgraph "FASE 2: GENERACIÓN (cada examen)"
+        Q[Ranura / tema] --> EMB2[Servicio embeddings]
+        EMB2 --> RET[Búsqueda similitud<br/>pgvector]
+        DB2 --> RET
+        RET --> CTX[Contexto relevante]
+        CTX --> LLM[LLM genera ítem]
+    end
+```
+
+### Fase 1 — Indexación
+- `scripts/index_material.py` o `POST /subjects/{id}/index` leen el material, lo dividen en chunks y generan embeddings.
+- Los chunks + embeddings se guardan en `material_chunks` (con pgvector `vector(1024)`).
+
+### Fase 2 — Generación con RAG
+- El `generator_node` consulta `retrieve_chunks()` con el tema de la ranura.
+- Recupera los `top_k` fragmentos más relevantes (similitud coseno) y se los pasa al LLM como contexto.
+- Configurable vía `blueprint.retrieval` (`top_k`, `min_score`, `use_rag`).
+
+### 💾 Persistencia
+- Los ítems aprobados se guardan en `generated_questions` con sus embeddings (`persist_generated_items`).
+- Esto crea un dataset de preguntas para experimentación y deduplicación futura.
 
 ---
 
@@ -169,8 +210,8 @@ Para que quede claro cómo funciona todo el sistema de principio a fin, aquí es
 ### Paso 1 — Entrada de datos
 El profesor sube sus materiales (PDFs, presentaciones, guías). En nuestro caso, la materia de prueba está en `data/inputs/Economia_Aplicada/` (35 archivos: apuntes, filminas, parciales, práctica).
 
-### Paso 2 — Ingestor: extraer el conocimiento
-El **Ingestor** lee todos esos archivos (PDF, DOCX, PPTX, XLSX, texto) y extrae el texto. Agrupa el contenido en "chunks" (fragmentos de ~2000 caracteres) y produce un **resumen del syllabus** (los primeros 6000 caracteres del material). Esto le da al sistema el "contexto" de qué trata la materia.
+### Paso 2 — Ingestor / Indexación: extraer el conocimiento
+El **Ingestor** lee todos esos archivos (PDF, DOCX, PPTX, XLSX, texto) y extrae el texto. Con **RAG**, este material se **indexa una vez**: se divide en chunks (~2000 caracteres), se generan embeddings (bge-m3, 1024 dims) y se guardan en `material_chunks`. Así, en vez de releer todo cada vez, el sistema puede **recuperar solo los fragmentos relevantes** para cada pregunta.
 
 ### Paso 3 — Planificador: diseñar el examen (blueprint)
 Definimos el **blueprint**: 8 preguntas, repartidas así:
@@ -430,6 +471,16 @@ Definida en `src/config.py` y `src/agents/llm.py`:
 - **7 niveles de `reasoning_effort`**: `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`
 - **Structured output**: `json_object`, `json_schema`, `regex`, `grammar`
 
+### Configuración de embeddings (RAG)
+
+| Parámetro | Valor | Descripción |
+|---|---|---|
+| `embedding_model` | `BAAI/bge-m3` | Modelo de embeddings (open-source) |
+| `embedding_dim` | `1024` | Dimensión del vector |
+| `embedding_url` | `http://localhost:8081/v1/embeddings` | Servicio de embeddings (Docker) |
+
+Los embeddings se generan en un **microservicio Docker** (`embedding-service`, puerto 8081) que sirve `BAAI/bge-m3` como endpoint OpenAI-compatible. El pipeline los usa para indexar el material (RAG) y para la deduplicación/persistencia.
+
 ---
 
 ## 🗄 Base de datos y migraciones
@@ -440,6 +491,7 @@ Modelos en `src/database/models.py` (SQLAlchemy + pgvector):
 erDiagram
     SUBJECTS ||--o{ SYLLABUS_TOPICS : "tiene"
     SUBJECTS ||--o{ GENERATED_QUESTIONS : "genera"
+    SUBJECTS ||--o{ MATERIAL_CHUNKS : "indexa"
 
     SUBJECTS {
         uuid id PK
@@ -451,6 +503,15 @@ erDiagram
         string title
         float weight
     }
+    MATERIAL_CHUNKS {
+        uuid id PK
+        uuid subject_id FK
+        string source_file
+        int chunk_index
+        text content
+        vector(1024) embedding
+        datetime created_at
+    }
     GENERATED_QUESTIONS {
         uuid id PK
         uuid subject_id FK
@@ -458,14 +519,14 @@ erDiagram
         string bloom_level
         string difficulty
         text question_text
-        vector(1536) embedding
+        vector(1024) embedding
         datetime created_at
     }
 ```
 
 - **`Connection`**: `src/database/connection.py` (engine + `SessionLocal`).
 - **Migraciones**: Alembic en `src/database/migrations/`. `env.py` inyecta la URL real desde `.env`.
-- **pgvector**: el campo `embedding` está tipado como `vector(1536)`.
+- **pgvector**: las columnas `embedding` están tipadas como `vector(1024)` (modelo bge-m3).
 
 ---
 
@@ -481,7 +542,7 @@ erDiagram
 ## 🚦 Estado del proyecto
 
 ### ✅ Implementado y validado
-- Infraestructura Docker (Postgres + pgvector + latex-compiler)
+- Infraestructura Docker (Postgres + pgvector + latex-compiler + embedding-service)
 - Configuración Pydantic + LLM local
 - Todos los esquemas Pydantic
 - Estado del grafo (`state.py`)
@@ -492,6 +553,10 @@ erDiagram
 - **Ingestor multi-formato** (PDF, DOCX, PPTX, XLSX, texto)
 - **Pipeline end-to-end** con materia real (Economía Aplicada): 7/8 ítems aprobados, PDF generado
 - **`scripts/run_pipeline.py`** — punto de entrada ejecutable
+- **RAG completo**: indexación + recuperación por similitud (pgvector)
+- **Persistencia** de ítems generados en `generated_questions`
+- **API** (`main.py`): registrar materia, indexar material, generar exámenes
+- **Blueprint enriquecido**: `retrieval` config y `metadata` para experimentación
 
 ### 🔬 Validado empíricamente (endpoint LLM)
 - `max_tokens=100000` aceptado
@@ -502,12 +567,12 @@ erDiagram
 ### 🐛 Bugs encontrados y corregidos
 - **`reasoning_effort` + structured output**: con `reasoning_effort > none`, vLLM deja `content` vacío → JSON inválido → ítems rechazados. Corregido usando `none`.
 - **Compilación de doble pasada**: `pdflatex` necesita 2 pasadas; el microservicio ahora ejecuta `pdflatex` dos veces y considera éxito si el PDF existe.
+- **Embeddings**: `sentence-transformers` arrastra torch con CUDA → se instala `torch` CPU primero, luego `sentence-transformers` normal.
 
 ### ⏳ Pendiente / por validar
-- Indexado vectorial completo con embeddings (pgvector)
-- Persistencia de ítems generados en la BD
-- `main.py` como endpoint/servicio (actualmente vacío)
 - Métricas de tesis (tasa de rechazo, % de dificultad, etc.)
+- Deduplicación con embeddings reales (hoy usa solapamiento de tokens)
+- Frontend/UI para subir archivos y generar exámenes
 
 ---
 
@@ -517,14 +582,24 @@ erDiagram
 # 1. Activar entorno
 source .venv/Scripts/activate
 
-# 2. Levantar infraestructura (Postgres + latex-compiler)
+# 2. Levantar infraestructura (Postgres + latex-compiler + embedding-service)
 cd docker && docker-compose up -d --build
 
 # 3. Migraciones
 alembic upgrade head
 
-# 4. Ejecutar el pipeline completo con la materia de prueba
-#    (usa data/inputs/Economia_Aplicada y genera un PDF)
+# 4a. Indexar el material de una materia (RAG)
+.venv/Scripts/python.exe scripts/index_material.py \
+    --name "Economía Aplicada" \
+    --materials "data/inputs/Economia_Aplicada/**/*.pdf"
+
+# 4b. Ejecutar el pipeline completo (genera un PDF)
 .venv/Scripts/python.exe scripts/run_pipeline.py
+
+# 5. (Opcional) Levantar la API
+.venv/Scripts/python.exe -m uvicorn main:app --host 0.0.0.0 --port 8000
+#    POST /subjects        → registrar materia
+#    POST /subjects/{id}/index → indexar material
+#    POST /exams/generate  → generar examen
 ```
 

@@ -80,14 +80,34 @@ def main() -> None:
     for m in materials:
         print(f"   - {Path(m).name}")
 
+    # Registrar/obtener la materia en la BD (para persistencia y RAG)
+    from src.database.connection import SessionLocal
+    from src.database.models import Subject
+
+    db = SessionLocal()
+    try:
+        subject = db.query(Subject).filter(Subject.name == "Economía Aplicada").first()
+        if subject is None:
+            subject = Subject(name="Economía Aplicada")
+            db.add(subject)
+            db.commit()
+            db.refresh(subject)
+            print(f"\n🆕 Materia registrada en BD: id={subject.id}")
+        else:
+            print(f"\n✅ Materia existente en BD: id={subject.id}")
+        subject_id = str(subject.id)
+    finally:
+        db.close()
+
     blueprint = build_blueprint(total_questions=8)
+    blueprint.subject_id = subject_id
     print(f"\n📋 Blueprint: {blueprint.total_questions} preguntas")
     print(f"   Bloom: { {k.value: v for k, v in blueprint.bloom_distribution.items()} }")
     print(f"   Dificultad: { {k.value: v for k, v in blueprint.difficulty_distribution.items()} }")
 
     print("\n🚀 Ejecutando pipeline...")
     result = run_exam_pipeline(
-        subject_id=blueprint.subject_id,
+        subject_id=subject_id,
         subject_name="Economía Aplicada",
         template_id=TemplateId.BASE_EXAM,
         raw_materials_paths=materials,

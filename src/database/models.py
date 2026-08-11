@@ -12,6 +12,7 @@ class Subject(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(200))
     syllabus: Mapped[list["SyllabusTopic"]] = relationship(back_populates="subject")
+    chunks: Mapped[list["MaterialChunk"]] = relationship(back_populates="subject")
 
 class SyllabusTopic(Base):
     __tablename__ = "syllabus_topics"
@@ -21,6 +22,18 @@ class SyllabusTopic(Base):
     title: Mapped[str] = mapped_column(String(200))
     weight: Mapped[float] = mapped_column(default=1.0)
 
+class MaterialChunk(Base):
+    """Fragmento del material de una materia, con su embedding (para RAG)."""
+    __tablename__ = "material_chunks"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    subject_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("subjects.id"))
+    subject: Mapped["Subject"] = relationship(back_populates="chunks")
+    source_file: Mapped[str] = mapped_column(String(500))
+    chunk_index: Mapped[int] = mapped_column(default=0)
+    content: Mapped[str] = mapped_column(Text)
+    embedding: Mapped[list[float]] = mapped_column(Vector(1024))
+    created_at: Mapped[str] = mapped_column(DateTime, server_default=func.now())
+
 class GeneratedQuestion(Base):
     __tablename__ = "generated_questions"
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -29,5 +42,5 @@ class GeneratedQuestion(Base):
     bloom_level: Mapped[str] = mapped_column(String(50))
     difficulty: Mapped[str] = mapped_column(String(50))
     question_text: Mapped[str] = mapped_column(Text)
-    embedding: Mapped[list[float]] = mapped_column(Vector(1536))
+    embedding: Mapped[list[float]] = mapped_column(Vector(1024))
     created_at: Mapped[str] = mapped_column(DateTime, server_default=func.now())

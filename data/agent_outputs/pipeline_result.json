@@ -5,188 +5,179 @@
   "approved_items": [
     {
       "topic": "Estudio de Mercado",
-      "subtopic": "Marketing Mix",
+      "subtopic": "Concepto y objetivo del estudio de mercado",
       "bloom_level": "recordar",
-      "difficulty": "facil",
+      "difficulty": "medio",
       "question_type": "opcion_multiple",
-      "statement": "En el contexto del estudio de mercado, el Marketing Mix se refiere a:",
+      "statement": "Según el material de estudio, ¿cuál es el propósito principal de realizar un estudio de mercado ANTES de la formulación de un proyecto?",
       "options": [
         {
-          "text": "Un conjunto de acciones planificadas alrededor de cuatro variables fundamentales: producto, precio, plaza y promoción.",
+          "text": "Definir la marca y el logotipo del producto a ofrecer.",
+          "is_correct": false
+        },
+        {
+          "text": "Verificar la viabilidad económica del emprendimiento.",
           "is_correct": true
         },
         {
-          "text": "Un análisis exclusivo de los precios de los competidores en el mercado.",
+          "text": "Calcular los costos fijos totales y variables del proyecto.",
           "is_correct": false
         },
         {
-          "text": "Una herramienta para calcular los costos de producción y embalaje del producto.",
-          "is_correct": false
-        },
-        {
-          "text": "Un método para seleccionar los canales de distribución y venta del producto.",
+          "text": "Establecer los canales de distribución y comercialización.",
           "is_correct": false
         }
       ],
-      "expected_answer": "Un conjunto de acciones planificadas alrededor de cuatro variables fundamentales: producto, precio, plaza y promoción.",
-      "solution_explanation": "Según el material de estudio, el Marketing Mix es la caja de herramientas que hace referencia a un conjunto de acciones que deben planificarse alrededor de cuatro variables fundamentales para la gestión de una empresa o proyecto: producto, precio, plaza y promoción. Las otras opciones mencionan elementos que forman parte de alguna de estas variables, pero no definen el concepto completo del Marketing Mix.",
+      "expected_answer": "Verificar la viabilidad económica del emprendimiento.",
+      "solution_explanation": "El estudio de mercado se realiza antes de formular el proyecto para recolectar y analizar información sobre clientes, proveedores y competidores, con el fin de verificar si el emprendimiento es económicamente viable. Los otros aspectos mencionados son parte del marketing mix o del análisis financiero, pero no el propósito principal del estudio de mercado en esta etapa.",
       "points": 1.0
     },
     {
       "topic": "Estudio de Mercado",
-      "subtopic": "General",
+      "subtopic": "Concepto y objetivos del estudio de mercado",
       "bloom_level": "recordar",
-      "difficulty": "medio",
-      "question_type": "verdadero_falso",
-      "statement": "El Estudio de Mercado se realiza después de la formulación del proyecto, para confirmar la viabilidad económica del emprendimiento.",
+      "difficulty": "facil",
+      "question_type": "opcion_multiple",
+      "statement": "Según el material de clase, ¿cuál es el propósito principal del estudio de mercado en la formulación de un plan de negocios?",
       "options": [
         {
-          "text": "Verdadero",
+          "text": "Determinar los costos fijos y variables del proyecto.",
           "is_correct": false
         },
         {
-          "text": "Falso",
+          "text": "Recolectar y analizar información sobre clientes, proveedores y competidores para verificar la viabilidad económica del emprendimiento.",
           "is_correct": true
+        },
+        {
+          "text": "Calcular el flujo de fondos y la rentabilidad del proyecto.",
+          "is_correct": false
+        },
+        {
+          "text": "Definir la marca y el logotipo del producto a vender.",
+          "is_correct": false
         }
       ],
-      "expected_answer": "Falso",
-      "solution_explanation": "Según el material, el Estudio de Mercado se realiza ANTES de la formulación del proyecto, para verificar la viabilidad económica del emprendimiento.",
+      "expected_answer": "Recolectar y analizar información sobre clientes, proveedores y competidores para verificar la viabilidad económica del emprendimiento.",
+      "solution_explanation": "El estudio de mercado se realiza antes de la formulación del proyecto con el fin de recolectar y analizar información sobre clientes, proveedores y competidores, verificando así la viabilidad económica del emprendimiento. Las demás opciones corresponden a etapas posteriores o aspectos específicos del plan de negocios.",
       "points": 1.0
     },
     {
       "topic": "Estudio de Mercado",
-      "subtopic": "Marketing Mix",
-      "bloom_level": "comprender",
-      "difficulty": "facil",
-      "question_type": "opcion_multiple",
-      "statement": "En el contexto del Marketing Mix, la variable 'plaza' se refiere a:",
-      "options": [
-        {
-          "text": "Las estrategias de publicidad y promoción para dar a conocer el producto.",
-          "is_correct": false
-        },
-        {
-          "text": "La fijación del precio considerando costos y márgenes de ganancia.",
-          "is_correct": false
-        },
-        {
-          "text": "La distribución del producto, incluyendo canales de venta y zonas de entrega.",
-          "is_correct": true
-        },
-        {
-          "text": "Las características del producto, como marca, logo y presentación.",
-          "is_correct": false
-        }
-      ],
-      "expected_answer": "La distribución del producto, incluyendo canales de venta y zonas de entrega.",
-      "solution_explanation": "Según el material de estudio, la plaza o distribución se refiere a cómo y dónde se ofrece el producto: zonas de la ciudad, canales de venta (domicilio, motomandados, etc.) y forma de toma de pedidos. Las demás opciones corresponden a promoción, precio y producto respectivamente.",
-      "points": 1.0
-    },
-    {
-      "topic": "Flujos Financieros",
-      "subtopic": "Marketing Mix y flujos de ingresos",
+      "subtopic": "Análisis de la Demanda",
       "bloom_level": "comprender",
       "difficulty": "medio",
       "question_type": "opcion_multiple",
-      "statement": "En el estudio de mercado para un plan de negocios, el análisis del Marketing Mix (producto, precio, plaza y promoción) permite proyectar los flujos financieros del emprendimiento. Si una empresa decide ofrecer descuentos por pago de contado y cobrar en cuotas, esta decisión afecta directamente a:",
+      "statement": "En el estudio de mercado, una empresa que planea lanzar un nuevo producto decide utilizar estadísticas gubernamentales y publicaciones de asociaciones del sector para estimar la demanda potencial. Según la clasificación de fuentes de información, ¿qué tipo de fuente está utilizando la empresa?",
       "options": [
         {
-          "text": "El flujo de egresos por concepto de compra de materias primas.",
+          "text": "Fuente primaria, porque los datos son recolectados directamente de los consumidores.",
           "is_correct": false
         },
         {
-          "text": "El flujo de ingresos, ya que modifica el momento y el monto de los cobros.",
+          "text": "Fuente secundaria, porque se basa en información ya existente y procesada por terceros.",
           "is_correct": true
         },
         {
-          "text": "El flujo de inversión inicial en maquinaria y equipo.",
+          "text": "Fuente mixta, porque combina datos históricos con proyecciones propias de la empresa.",
           "is_correct": false
         },
         {
-          "text": "El flujo de caja operativo, pero solo por el lado de los costos de distribución.",
+          "text": "Fuente terciaria, porque proviene de resúmenes de investigaciones previas.",
           "is_correct": false
         }
       ],
-      "expected_answer": "B",
-      "solution_explanation": "La decisión sobre descuentos y plazos de cobro (precio) altera la temporalidad y magnitud de las entradas de efectivo, lo que impacta directamente el flujo de ingresos proyectado en el estudio financiero.",
+      "expected_answer": "Fuente secundaria, porque se basa en información ya existente y procesada por terceros.",
+      "solution_explanation": "En el estudio de mercado, las fuentes secundarias incluyen estadísticas gubernamentales, publicaciones de asociaciones y otras informaciones ya elaboradas. Al usarlas, la empresa no recolecta datos directamente de los consumidores (fuente primaria), sino que aprovecha datos existentes, lo que corresponde a una fuente secundaria.",
       "points": 1.0
     },
     {
       "topic": "Flujos Financieros",
-      "subtopic": "Marketing Mix: Precio",
+      "subtopic": "Estructura y análisis del flujo de caja en proyectos",
+      "bloom_level": "comprender",
+      "difficulty": "dificil",
+      "question_type": "opcion_multiple",
+      "statement": "En la evaluación de un proyecto de inversión, el flujo de caja proyectado se estructura en momentos que reflejan los egresos iniciales, los ingresos y egresos de operación, y el valor de desecho. Si un analista observa que, en un período determinado, los ingresos por ventas son iguales a la suma de costos fijos y variables, pero aún no se ha considerado el valor de desecho, ¿cuál es la interpretación correcta de esta situación?",
+      "options": [
+        {
+          "text": "El proyecto se encuentra en su punto de equilibrio operativo, pero aún no se ha considerado el impacto del valor de desecho en la rentabilidad total.",
+          "is_correct": true
+        },
+        {
+          "text": "El proyecto ha alcanzado su óptimo de operación, ya que los ingresos igualan a los costos totales, maximizando la diferencia entre ambos.",
+          "is_correct": false
+        },
+        {
+          "text": "El proyecto está operando en su límite de operación, lo que implica que debe detenerse de inmediato para evitar pérdidas futuras.",
+          "is_correct": false
+        },
+        {
+          "text": "El proyecto ha superado su punto de equilibrio, ya que el valor de desecho incrementará los ingresos futuros, asegurando rentabilidad.",
+          "is_correct": false
+        }
+      ],
+      "expected_answer": "El proyecto se encuentra en su punto de equilibrio operativo, pero aún no se ha considerado el impacto del valor de desecho en la rentabilidad total.",
+      "solution_explanation": "El punto de equilibrio se define como el nivel en que los ingresos totales igualan a los costos totales (fijos + variables). En este caso, la igualdad se cumple sin incluir el valor de desecho, que es un ingreso futuro al final del horizonte. Por tanto, se trata de un equilibrio operativo, no de un óptimo (donde la diferencia es máxima) ni de un límite (que implicaría cierre). El valor de desecho es un componente del flujo de caja que se evalúa en el momento final, no en el período corriente.",
+      "points": 1.0
+    },
+    {
+      "topic": "Flujos Financieros",
+      "subtopic": "Estructura del Flujo de Caja y Punto de Equilibrio",
       "bloom_level": "aplicar",
-      "difficulty": "facil",
+      "difficulty": "dificil",
       "question_type": "desarrollo",
-      "statement": "Usted es el dueño de una pequeña empresa que produce y vende artesanías. Para calcular el precio de venta de uno de sus productos, ha determinado que el costo total de producir una unidad (incluyendo materiales, embalaje y envío) es de $5.000. Si usted desea obtener un margen de ganancia del 40% sobre el costo, ¿cuál sería el precio final de venta de cada artesanía? Justifique su respuesta mostrando el cálculo realizado.",
+      "statement": "Una empresa está evaluando un proyecto de expansión de su planta de producción. La inversión inicial asciende a $500.000 (Capital Fijo) y requiere además $120.000 de Capital de Trabajo. Los costos fijos anuales de operación son $80.000 (incluyen arriendo, seguros y amortizaciones), mientras que los costos variables unitarios son $15 (materiales, mano de obra directa, suministros y distribución). El precio de venta unitario del producto es $25. Se proyecta vender 20.000 unidades anuales durante los 5 años de vida útil del proyecto. Al final del año 5, se estima un valor de desecho o salvamento de los activos fijos de $50.000, y la recuperación del capital de trabajo es total. La tasa de impuesto a las utilidades es del 25%. Se pide: (a) Elaborar el flujo de caja proyectado anual (años 0 a 5) para el proyecto, identificando claramente cada uno de sus componentes (egresos iniciales, ingresos y egresos de operación, valor de desecho y recuperación del capital de trabajo). Considere que los costos fijos y variables son desembolsables, y que la depreciación anual (considerada como costo fijo no desembolsable) es de $10.000. (b) Determinar el punto de equilibrio anual en unidades y en pesos, y explicar si con la proyección de ventas indicada (20.000 unidades) el proyecto genera utilidad operacional. (c) Calcular el óptimo de operación si se sabe que la función de ingresos es I(q)=25q y la de costos totales es C(q)=80.000+15q+0,0001q^2. ¿Cuál es la cantidad que maximiza la utilidad? Justifique numéricamente.",
       "options": [],
-      "expected_answer": "El precio final de venta se calcula sumando al costo el margen de ganancia deseado. Primero se calcula el margen: 40% de $5.000 = $2.000. Luego se suma al costo: $5.000 + $2.000 = $7.000. Por lo tanto, el precio de venta de cada artesanía debe ser de $7.000.",
-      "solution_explanation": "Esta pregunta aplica el concepto de fijación de precios basado en costo más margen, tal como se menciona en el syllabus. El estudiante debe identificar el costo total, calcular el margen porcentual sobre el costo y sumarlo para obtener el precio final.",
+      "expected_answer": "(a) Año 0: -620.000 (inversión fija + capital de trabajo). Años 1 a 5: Ingresos = 20.000*25 = 500.000; Costos variables = 20.000*15 = 300.000; Costos fijos desembolsables = 80.000 - 10.000 (depreciación) = 70.000; Utilidad antes de impuestos = 500.000 - 300.000 - 80.000 = 120.000; Impuesto (25%) = 30.000; Utilidad neta = 90.000; Flujo operacional = 90.000 + 10.000 (depreciación) = 100.000. Año 5: adicionalmente, valor de desecho = 50.000 (sin impuesto si se considera como recuperación de capital) y recuperación capital de trabajo = 120.000; Flujo total año 5 = 100.000 + 50.000 + 120.000 = 270.000. (b) Punto de equilibrio: costos fijos totales (incluyendo depreciación) = 80.000; margen de contribución unitario = 25-15=10; PE unidades = 80.000/10 = 8.000 unidades; PE pesos = 8.000*25 = 200.000. Con 20.000 unidades, la utilidad operacional = 20.000*(25-15) - 80.000 = 120.000 >0, por lo que sí genera utilidad. (c) Utilidad U(q)=25q - (80.000+15q+0,0001q^2) = 10q -80.000 -0,0001q^2. Derivando: U'(q)=10 -0,0002q=0 => q=50.000 unidades. La cantidad óptima es 50.000 unidades, que maximiza la utilidad (verificando segunda derivada negativa).",
+      "solution_explanation": "Se evalúa la capacidad de estructurar un flujo de caja completo, aplicar el punto de equilibrio y optimizar la operación mediante cálculo diferencial, integrando conceptos de costos fijos/variables y valor de desecho.",
       "points": 1.0
     },
     {
       "topic": "Análisis Económico-Financiero",
-      "subtopic": "Marketing Mix",
-      "bloom_level": "aplicar",
-      "difficulty": "medio",
+      "subtopic": "Inversión inicial y capital de trabajo",
+      "bloom_level": "analizar",
+      "difficulty": "facil",
       "question_type": "opcion_multiple",
-      "statement": "Un emprendedor planea vender mermeladas artesanales. Para fijar el precio de cada frasco, calculó que el costo total unitario (materia prima, envase, etiqueta y mano de obra) es de S/ 8.50. Si desea obtener un margen de ganancia del 40% sobre el costo, ¿cuál será el precio de venta unitario?",
+      "statement": "En el análisis económico-financiero de un proyecto, la inversión inicial se compone de dos grandes rubros: la inversión fija y el capital de trabajo. Con base en esta distinción, analice la siguiente lista de conceptos y seleccione la opción que clasifique correctamente los elementos como parte de la inversión fija o del capital de trabajo.",
       "options": [
         {
-          "text": "S/ 11.90",
+          "text": "Inversión fija: terrenos, edificios, equipos instalados y patentes. Capital de trabajo: inventarios, caja y bancos, cuentas por cobrar y cuentas por pagar.",
           "is_correct": true
         },
         {
-          "text": "S/ 10.50",
+          "text": "Inversión fija: inventarios, caja y bancos, cuentas por cobrar. Capital de trabajo: terrenos, edificios, equipos instalados y patentes.",
           "is_correct": false
         },
         {
-          "text": "S/ 12.00",
+          "text": "Inversión fija: materiales, suministros, mano de obra y mantenimiento. Capital de trabajo: terrenos, edificios, equipos instalados y patentes.",
           "is_correct": false
         },
         {
-          "text": "S/ 13.60",
+          "text": "Inversión fija: cuentas por cobrar y cuentas por pagar. Capital de trabajo: terrenos, edificios, equipos instalados y patentes.",
           "is_correct": false
         }
       ],
-      "expected_answer": "S/ 11.90",
-      "solution_explanation": "Para calcular el precio de venta con un margen del 40% sobre el costo, se multiplica el costo unitario por 1.40: 8.50 × 1.40 = 11.90. Las otras opciones no reflejan correctamente el margen solicitado.",
+      "expected_answer": "Inversión fija: terrenos, edificios, equipos instalados y patentes. Capital de trabajo: inventarios, caja y bancos, cuentas por cobrar y cuentas por pagar.",
+      "solution_explanation": "La inversión fija incluye los recursos necesarios para la ejecución y puesta en marcha del proyecto, como terrenos, edificios, equipos y patentes. El capital de trabajo comprende los recursos para la explotación del proyecto, como inventarios, caja y bancos, cuentas por cobrar y cuentas por pagar. Por lo tanto, la opción que clasifica correctamente estos elementos es la primera.",
       "points": 1.0
     },
     {
       "topic": "Fijación de Precios",
-      "subtopic": "Estrategias de fijación de precios en el Marketing Mix",
+      "subtopic": "Métodos para fijar precios",
       "bloom_level": "analizar",
-      "difficulty": "medio",
-      "question_type": "opcion_multiple",
-      "statement": "Una empresa local de bebidas artesanales está analizando su estrategia de precios. Observa que su principal competidor, una marca internacional, ajusta sus precios según la región y las condiciones económicas locales, logrando mantener su participación de mercado. La empresa artesanal, por su parte, fija sus precios únicamente con base en sus costos y un margen fijo del 30%, sin considerar la demanda ni los precios de la competencia. Según el enfoque del Marketing Mix y la información del estudio de mercado, ¿cuál es la principal debilidad de la estrategia actual de la empresa artesanal?",
-      "options": [
-        {
-          "text": "No está considerando los descuentos por cantidad ni las modalidades de pago, lo que reduce sus ventas.",
-          "is_correct": false
-        },
-        {
-          "text": "Su precio no se adapta dinámicamente al mercado, lo que puede llevarla a perder clientes o dejar de capturar mayor margen.",
-          "is_correct": true
-        },
-        {
-          "text": "El margen fijo del 30% es demasiado alto para el sector de bebidas, lo que la hace poco competitiva.",
-          "is_correct": false
-        },
-        {
-          "text": "La empresa no está utilizando publicidad para justificar un precio más alto que el de su competidor.",
-          "is_correct": false
-        }
-      ],
-      "expected_answer": "Su precio no se adapta dinámicamente al mercado, lo que puede llevarla a perder clientes o dejar de capturar mayor margen.",
-      "solution_explanation": "El caso contrasta la estrategia de Coca Cola (precios competitivos ajustados al mercado y situación económica) con la de la empresa artesanal (precio basado solo en costo + margen). Analizar esta situación requiere identificar que la fijación de precios debe considerar variables externas como demanda y competencia, tal como se menciona en el estudio de mercado. La debilidad principal es la rigidez del precio frente a un entorno dinámico, no aspectos secundarios como descuentos, el nivel del margen o la publicidad.",
+      "difficulty": "facil",
+      "question_type": "desarrollo",
+      "statement": "Una empresa produce un bien con un costo unitario de $80. Al analizar el mercado, observa que sus competidores venden un producto similar a $120. La empresa quiere decidir si fijar su precio basándose en el método de costo (añadiendo un margen del 50%) o en el método de competencia (igualando el precio del mercado).\\n\\nAnalice ambas opciones y determine cuál de los dos métodos le generaría un mayor margen de ganancia por unidad, justificando su respuesta con los cálculos correspondientes.",
+      "options": [],
+      "expected_answer": "- Método basado en el costo: Precio = Costo unitario + (50% de $80) = $80 + $40 = $120. Margen = $40.\\n- Método basado en la competencia: Precio = $120. Margen = $120 - $80 = $40.\\n- Ambos métodos generan el mismo margen ($40). Sin embargo, se debe analizar si el precio de $120 es aceptable para el mercado y si cubre la demanda proyectada, lo que implicaría un análisis adicional del valor percibido por el consumidor.",
+      "solution_explanation": "Se comparan los márgenes resultantes de ambos métodos. El método de costo con markup del 50% da un precio de $120, igual al de la competencia, por lo que el margen es idéntico. El análisis requiere considerar factores externos como la demanda y la competencia para decidir cuál estrategia es más sostenible.",
       "points": 1.0
     }
   ],
   "rejection_log": [
     {
-      "spec_id": "a667511b",
+      "spec_id": "5b0e0a81",
       "attempt_number": 1,
-      "reason": "low_quality",
+      "reason": "validation_error",
       "quality_score": 3.0,
       "similarity_score": 0.0
     }
@@ -200,5 +191,5 @@
       "error_excerpt": null
     }
   ],
-  "pdf_path": "/app/output/f0abb2b0-f625-4bff-bd5f-9c4c7148f4ab.pdf"
+  "pdf_path": "/app/output/61f8d9bd-0fb3-4399-86ac-e4e2aedd64b1.pdf"
 }

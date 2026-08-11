@@ -82,6 +82,28 @@ class EvaluationResult(BaseModel):
     rejection_reason: Optional[str] = None
 
 
+class RetrievalConfig(BaseModel):
+    """Configuración del RAG para este examen.
+
+    Controla cómo el Generador recupera contexto del material indexado.
+    """
+    top_k: int = Field(default=3, ge=1, le=20, description="Nº de fragmentos a recuperar")
+    min_score: float = Field(default=0.15, ge=0, le=1, description="Umbral mínimo de similitud")
+    use_rag: bool = Field(default=True, description="Si False, usa el resumen del syllabus")
+    max_chars_per_chunk: int = Field(default=1200, ge=100)
+
+
+class ExamMetadata(BaseModel):
+    """Metadatos del examen (para experimentación y trazabilidad)."""
+    title: str = Field(default="", description="Título del examen, ej. Primer Parcial")
+    instructions: str = Field(default="", description="Instrucciones para el estudiante")
+    model: str = Field(default="", description="Modelo LLM usado")
+    temperature: float | None = Field(default=None, ge=0, le=2)
+    reasoning_effort: str | None = Field(default=None)
+    experiment_tag: str = Field(default="", description="Etiqueta para comparar experimentos")
+    notes: str = Field(default="")
+
+
 class ExamBlueprint(BaseModel):
     """Salida del Agente Planificador: la estructura que debe tener el examen."""
     subject_id: str
@@ -96,6 +118,8 @@ class ExamBlueprint(BaseModel):
         ..., description="Ponderación por tema del pensum, debe sumar 1.0"
     )
     estimated_duration_minutes: int = Field(default=90)
+    retrieval: RetrievalConfig = Field(default_factory=RetrievalConfig)
+    metadata: ExamMetadata = Field(default_factory=ExamMetadata)
 
     @field_validator("bloom_distribution", "difficulty_distribution", "topics_weight")
     @classmethod

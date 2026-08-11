@@ -25,5 +25,18 @@ services:
     volumes:
       - ../data/agent_outputs:/app/output
 
+  # Servicio de embeddings (OpenAI-compatible)
+  embedding-service:
+    build:
+      context: ./embedding-service
+      dockerfile: Dockerfile
+    container_name: exam_embedding_service
+    restart: always
+    environment:
+      EMBEDDING_MODEL: BAAI/bge-m3
+      EMBEDDING_DEVICE: cpu
+    ports:
+      - "8081:8081"
+
 volumes:
   postgres_data:

@@ -191,8 +191,12 @@ def run_exam_pipeline(
     template_id,
     raw_materials_paths: list[str],
     blueprint: ExamBlueprint,
+    persist: bool = True,
 ) -> dict:
-    """Punto de entrada: construye el estado inicial y ejecuta el grafo."""
+    """Punto de entrada: construye el estado inicial y ejecuta el grafo.
+
+    Si `persist=True`, guarda los ítems aprobados en la BD (con embeddings).
+    """
     initial_state: dict[str, Any] = {
         "subject_id": subject_id,
         "subject_name": subject_name,
@@ -220,4 +224,18 @@ def run_exam_pipeline(
         "error_message": None,
     }
     graph = build_graph()
-    return graph.invoke(initial_state)
+    result = graph.invoke(initial_state)
+
+    # Persistir ítems aprobados en la BD (Fase 4)
+    if persist and result.get("approved_items"):
+        from src.agents.persistence import persist_generated_items
+
+        persist_result = persist_generated_items(
+            subject_id=subject_id,
+            items=result["approved_items"],
+            rejection_log=result.get("rejection_log", []),
+            total_llm_calls=result.get("total_llm_calls", 0),
+        )
+        result["persisted"] = persist_result
+
+    return result

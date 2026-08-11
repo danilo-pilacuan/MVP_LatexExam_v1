@@ -21,6 +21,7 @@ from src.schemas.exam import (
     CompiledExam,
 )
 from src.agents.llm import generator_llm, evaluator_llm
+from src.agents.retrieval import retrieve_chunks, format_context
 from src.templates.registry import TemplateId
 from src.utils.latex_templates import render_exam
 
@@ -247,6 +248,30 @@ def generator_node(state: dict) -> dict:
     spec: ItemSpec = state["pending_specs"][0]
     remaining = state["pending_specs"][1:]
 
+    # Configuración RAG desde el blueprint (retrieval config)
+    blueprint: ExamBlueprint = state["blueprint"]
+    retrieval_cfg = blueprint.retrieval
+
+    # RAG: recuperar chunks relevantes al tema del spec desde la BD (pgvector).
+    # Si la materia está indexada, usamos los fragmentos más relevantes en vez
+    # del resumen estático. Si no hay chunks, caemos al resumen del syllabus.
+    context = ""
+    if retrieval_cfg.use_rag:
+        try:
+            chunks = retrieve_chunks(
+                query=f"{spec.topic} {spec.subtopic or ''}",
+                subject_id=state["subject_id"],
+                top_k=retrieval_cfg.top_k,
+                min_score=retrieval_cfg.min_score,
+            )
+            if chunks:
+                context = format_context(chunks, max_chars_per_chunk=retrieval_cfg.max_chars_per_chunk)
+        except Exception:  # noqa: BLE001
+            context = ""
+
+    if not context:
+        context = f"Contexto del syllabus (fragmento):\n{state.get('syllabus_summary', '')[:4000]}"
+
     prompt = (
         "Eres un generador de ítems de examen universitario. Genera UNA pregunta "
         "que cumpla exactamente esta especificación:\n"
@@ -256,8 +281,7 @@ def generator_node(state: dict) -> dict:
         f"- Dificultad: {spec.difficulty.value}\n"
         f"- Tipo de pregunta: {spec.question_type.value}\n"
         f"- Puntaje: {spec.points}\n\n"
-        "Contexto del syllabus (fragmento):\n"
-        f"{state.get('syllabus_summary', '')[:4000]}\n\n"
+        f"{context}\n\n"
         "Devuelve solo la estructura solicitada."
     )
 
@@ -369,7 +393,7 @@ def assembler_node(state: dict) -> dict:
         exam,
         state["template_id"],
         state["subject_name"],
-        instructions="Responda todas las preguntas en el espacio indicado.",
+        instructions=blueprint.metadata.instructions or "Responda todas las preguntas en el espacio indicado.",
         duration_minutes=blueprint.estimated_duration_minutes,
         print_answers=True,
     )

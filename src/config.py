@@ -31,9 +31,11 @@ class Settings(BaseSettings):
     # Fracción del syllabus que se inyecta como contexto en cada llamada.
     max_context_chars: int = 6000
 
-    embedding_model: str = "text-embedding-3-small"
-    embedding_dim: int = 1536
+    embedding_model: str = "BAAI/bge-m3"
+    embedding_dim: int = 1024
     dedup_similarity_threshold: float = 0.82
+    # Servicio de embeddings (OpenAI-compatible, corre en Docker local)
+    embedding_url: str = "http://localhost:8081/v1/embeddings"
 
     # --- Límites de seguridad del grafo ---
     max_item_retries: int = 3
