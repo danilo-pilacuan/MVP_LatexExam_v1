@@ -42,4 +42,10 @@ class Settings(BaseSettings):
     max_total_llm_calls: int = 200
     max_compilation_attempts: int = 3
 
+    # --- Open WebUI (para subir PDFs como adjuntos nativos del chat) ---
+    openwebui_url: str = "http://localhost:3000"  # URL interna (red Docker)
+    openwebui_public_url: str = "http://localhost:3000"  # URL pública (navegador)
+    openwebui_admin_email: str = "admin@localhost"
+    openwebui_admin_password: str = "admin"
+
 settings = Settings()

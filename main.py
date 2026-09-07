@@ -18,14 +18,44 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from fastapi import FastAPI, HTTPException  # noqa: E402
+from fastapi.responses import FileResponse  # noqa: E402
+from fastapi.staticfiles import StaticFiles  # noqa: E402
 from pydantic import BaseModel, Field  # noqa: E402
 
 from src.database.connection import SessionLocal  # noqa: E402
 from src.database.models import Subject  # noqa: E402
 from src.schemas.exam import ExamBlueprint  # noqa: E402
 from src.templates.registry import TemplateId  # noqa: E402
+from src.api.chat import router as chat_router  # noqa: E402
 
 app = FastAPI(title="Generador de Exámenes API", version="0.1.0")
+
+# Router del agente conversacional (OpenAI-compatible para OpenWebUI).
+app.include_router(chat_router)
+
+# Directorio de salida de PDFs (compartido con el latex-compiler vía volumen).
+# En el contenedor se monta en /app/output; localmente es data/agent_outputs.
+_CANDIDATE_OUTPUT = [
+    Path("/app/output"),  # contenedor (volumen compartido con latex-compiler)
+    Path(__file__).resolve().parent / "data" / "agent_outputs",  # desarrollo local
+]
+OUTPUT_DIR = next((p for p in _CANDIDATE_OUTPUT if p.exists()), _CANDIDATE_OUTPUT[-1])
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+
+@app.get("/output/{filename}")
+def download_output(filename: str):
+    """Sirve un PDF generado (examen) para descargarlo desde el navegador."""
+    # Evitar path traversal: solo el nombre base del archivo.
+    safe = Path(filename).name
+    file_path = OUTPUT_DIR / safe
+    if not file_path.exists() or file_path.suffix.lower() != ".pdf":
+        raise HTTPException(status_code=404, detail="Archivo no encontrado")
+    return FileResponse(
+        file_path,
+        media_type="application/pdf",
+        filename=safe,
+    )
 
 
 # ---------------------------------------------------------------------------

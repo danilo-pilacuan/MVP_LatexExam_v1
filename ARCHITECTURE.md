@@ -558,6 +558,19 @@ erDiagram
 - **API** (`main.py`): registrar materia, indexar material, generar exámenes
 - **Blueprint enriquecido**: `retrieval` config y `metadata` para experimentación
 
+### 🆕 Implementado (agente conversacional — Fase 2 del plan)
+- **Campos de verificación** humano/IA en `generated_questions` (migración `c3d4e5f6a7b8`)
+- **Estructura completa** de la pregunta persistida (antes solo el texto)
+- **Service layer de escritura segura** (`src/bank/service.py`): preguntas verificadas por humano inmutables para el agente
+- **Agente conversacional** (`src/agents/conversational/`) con human-in-the-loop
+- **Endpoint OpenAI-compatible** `/v1/chat/completions` (streaming con `delta.content`) para conectar OpenWebUI
+- **OpenWebUI** en Docker Compose como interfaz conversacional
+- **Verificación por IA** (`src/agents/verifier.py`) con prioridad de revisión
+- **Checkpointer persistente** con `PostgresSaver` (PostgreSQL) para retomar conversaciones
+- **Tools**: `listar_materias`, `buscar_preguntas`, `generar_pregunta`, `guardar_pregunta`, `confirmar_verificacion_humana`, `generar_examen_pdf`
+- **Generación de examen en PDF** y subida como adjunto nativo a OpenWebUI (`src/api/openwebui.py`)
+- **Docs**: `docs/metrics.md` y `docs/cost_analysis.md`
+
 ### 🔬 Validado empíricamente (endpoint LLM)
 - `max_tokens=100000` aceptado
 - Contexto de 36k tokens procesado
@@ -576,16 +589,85 @@ erDiagram
 
 ---
 
+## 💬 Agente Conversacional (OpenWebUI + human-in-the-loop)
+
+### Arquitectura
+
+```mermaid
+graph LR
+    OWU[OpenWebUI<br/>puerto 3000] -->|"OpenAI-compatible<br/>/v1/chat/completions"| API[FastAPI<br/>src/api/chat.py]
+    API --> GR[Grafo conversacional<br/>src/agents/conversational/graph.py]
+    GR --> AS[assistant<br/>LLM + tools]
+    AS -->|"tool_calls"| TOOLS[nodo tools<br/>con human-in-the-loop]
+    TOOLS -->|"interrupt (confirmación)"| HUMANO((Profesor))
+    TOOLS -->|"escritura segura"| BANK[src/bank/service.py]
+    BANK --> PG[(PostgreSQL)]
+    TOOLS -->|"RAG"| RETRIEVE[src/agents/retrieval.py]
+    RETRIEVE --> PG
+```
+
+### Herramientas del agente (tools)
+
+| Tool | Tipo | Descripción |
+|---|---|---|
+| `listar_materias` | Lectura | Lista las materias registradas (id + nombre) |
+| `buscar_preguntas` | Lectura | Recupera preguntas del banco (no genera) |
+| `generar_pregunta` | Lectura | Genera UNA pregunta con RAG (no guarda) |
+| `guardar_pregunta` | **Escritura** | Guarda en el banco + verificación por IA |
+| `confirmar_verificacion_humana` | **Escritura** | Marca `verified_by_human=True` |
+| `generar_examen_pdf` | **Escritura** | Genera examen, compila a PDF y lo adjunta a OpenWebUI |
+
+### Flujo con human-in-the-loop
+
+```mermaid
+graph TD
+    U[Profesor: "dame 20 preguntas de estos temas"] --> A[assistant]
+    A -->|buscar_preguntas| B[Recupera del banco]
+    A -->|generar_pregunta| C[Genera UNA pregunta]
+    C -->|muestra al profesor| D{¿Confirmas guardar?}
+    D -->|sí| E[guardar_pregunta<br/>+ verificación IA]
+    D -->|no| A
+    E --> F{¿Confirmas verificación humana?}
+    F -->|sí| G[confirmar_verificacion_humana<br/>verified_by_human=True]
+    F -->|no| A
+```
+
+**Puntos de decisión humana:**
+1. Antes de **guardar** una pregunta (`guardar_pregunta`).
+2. Antes de marcar **verificación humana** (`confirmar_verificacion_humana`).
+
+Estos puntos usan `interrupt` de LangGraph: el grafo **pausa** y espera la aprobación del profesor. Si no se aprueba, la acción no se ejecuta.
+
+### Restricciones de seguridad de escritura
+
+- Toda escritura pasa por `src/bank/service.py`.
+- `update_question` / `delete_question` lanzan `SecurityError` si `verified_by_human=True`.
+- `set_human_verification()` solo lo invoca la confirmación humana explícita del chat.
+
+### Persistencia del contexto de conversación
+
+El grafo usa un **checkpointer persistente** con `PostgresSaver` (PostgreSQL). Las conversaciones se retoman entre reinicios usando el `thread_id`. Si no hay BD disponible, cae a `InMemorySaver` (efímero).
+
+### Entrega de PDFs (adjunto nativo a OpenWebUI)
+
+Cuando el agente genera un examen (`generar_examen_pdf`):
+1. Compila el LaTeX a PDF vía el microservicio `latex-compiler`.
+2. Sube el PDF a OpenWebUI con `src/api/openwebui.py` (`POST /api/v1/files/`).
+3. Devuelve un enlace markdown `[Descargar el PDF](http://localhost:3000/api/v1/files/{id}/content)` que OpenWebUI renderiza como enlace clicable en el chat.
+
+---
+
 ## 🛠 Cómo ejecutar
 
 ```bash
 # 1. Activar entorno
 source .venv/Scripts/activate
 
-# 2. Levantar infraestructura (Postgres + latex-compiler + embedding-service)
+# 2. Levantar infraestructura (Postgres + latex-compiler + embedding-service
+#    + exam-app + open-webui)
 cd docker && docker-compose up -d --build
 
-# 3. Migraciones
+# 3. Migraciones (el contenedor exam-app las aplica al arrancar; también manual)
 alembic upgrade head
 
 # 4a. Indexar el material de una materia (RAG)
@@ -596,10 +678,18 @@ alembic upgrade head
 # 4b. Ejecutar el pipeline completo (genera un PDF)
 .venv/Scripts/python.exe scripts/run_pipeline.py
 
-# 5. (Opcional) Levantar la API
+# 5a. (Opcional) Levantar la API
 .venv/Scripts/python.exe -m uvicorn main:app --host 0.0.0.0 --port 8000
 #    POST /subjects        → registrar materia
 #    POST /subjects/{id}/index → indexar material
 #    POST /exams/generate  → generar examen
+
+# 5b. Agente conversacional (OpenAI-compatible)
+#    GET  /v1/models               → listar modelos
+#    POST /v1/chat/completions     → conversar con el agente
+#    POST /v1/chat/completions     → reanudar confirmación humana (resume)
+
+# 6. OpenWebUI (interfaz conversacional)
+#    Abrir http://localhost:3000  → conecta al agente automáticamente
 ```
 

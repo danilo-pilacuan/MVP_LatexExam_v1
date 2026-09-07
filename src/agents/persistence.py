@@ -41,6 +41,19 @@ def persist_generated_items(
                 difficulty=item.difficulty.value,
                 question_text=item.statement,
                 embedding=vec,
+                # --- Estructura completa del ítem ---
+                question_type=item.question_type.value if item.question_type else None,
+                options=(
+                    [o.model_dump() for o in item.options]
+                    if item.options else None
+                ),
+                expected_answer=item.expected_answer,
+                solution_explanation=item.solution_explanation,
+                subtopic=item.subtopic,
+                points=item.points,
+                # --- Procedencia ---
+                source="generated",
+                created_by="pipeline",
             ))
             saved += 1
         db.commit()

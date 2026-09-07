@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import String, Text, ForeignKey, DateTime, func
+from sqlalchemy import String, Text, ForeignKey, DateTime, func, Boolean, Float, JSON
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from pgvector.sqlalchemy import Vector
@@ -44,3 +44,21 @@ class GeneratedQuestion(Base):
     question_text: Mapped[str] = mapped_column(Text)
     embedding: Mapped[list[float]] = mapped_column(Vector(1024))
     created_at: Mapped[str] = mapped_column(DateTime, server_default=func.now())
+
+    # --- Estructura completa del ítem (antes solo se guardaba el texto) ---
+    question_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    options: Mapped[list | None] = mapped_column(JSON, nullable=True)  # list[AnswerOption]
+    expected_answer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    solution_explanation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    subtopic: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    points: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    # --- Verificación humana e IA (requisito de Felipe) ---
+    verified_by_human: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    verified_by_ai: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    ai_review_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ai_review_priority: Mapped[str | None] = mapped_column(String(20), nullable=True)  # alta|media|baja
+
+    # --- Procedencia y auditoría ---
+    source: Mapped[str | None] = mapped_column(String(50), nullable=True)  # generated|bank
+    created_by: Mapped[str | None] = mapped_column(String(100), nullable=True)  # "agent"|"human"|"chat"

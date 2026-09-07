@@ -38,5 +38,52 @@ services:
     ports:
       - "8081:8081"
 
+  # Aplicación orquestadora (FastAPI) — expone la API REST + el agente
+  # conversacional OpenAI-compatible (/v1/chat/completions) para OpenWebUI.
+  exam-app:
+    build:
+      context: ..
+      dockerfile: docker/app/Dockerfile
+    container_name: exam_app
+    restart: always
+    env_file:
+      - ../.env
+    environment:
+      # Dentro de la red de compose, la BD y los servicios usan sus nombres.
+      DATABASE_URL: postgresql://exam_user:exam_password@postgres-db:5432/exam_generator_db
+      LATEX_COMPILER_URL: http://latex-compiler:8080/compile
+      EMBEDDING_URL: http://embedding-service:8081/v1/embeddings
+      OPENWEBUI_URL: http://open-webui:8080
+      OPENWEBUI_PUBLIC_URL: http://localhost:3000
+      OPENWEBUI_ADMIN_EMAIL: admin@localhost
+      OPENWEBUI_ADMIN_PASSWORD: admin
+    ports:
+      - "8000:8000"
+    # Compartir el directorio de salida con el latex-compiler para servir los PDFs.
+    volumes:
+      - ../data/agent_outputs:/app/output
+    depends_on:
+      - postgres-db
+      - latex-compiler
+      - embedding-service
+
+  # OpenWebUI: interfaz conversacional para el agente.
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: exam_open_webui
+    restart: always
+    ports:
+      - "3000:8080"
+    environment:
+      # Conecta OpenWebUI con el agente como proveedor personalizado.
+      OPENAI_API_BASE_URLS: http://exam-app:8000/v1
+      OPENAI_API_KEYS: no-key
+      WEBUI_AUTH: "false"   # sin login para el MVP (un solo usuario)
+    volumes:
+      - open_webui_data:/app/backend/data
+    depends_on:
+      - exam-app
+
 volumes:
   postgres_data:
+  open_webui_data:
