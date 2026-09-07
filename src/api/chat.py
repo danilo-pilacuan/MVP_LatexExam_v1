@@ -30,7 +30,7 @@ router = APIRouter(prefix="/v1")
 
 class ChatMessage(BaseModel):
     role: str
-    content: str
+    content: str | list | None = None
 
 
 class ChatCompletionRequest(BaseModel):
@@ -44,12 +44,51 @@ class ChatCompletionRequest(BaseModel):
     )
 
 
+def _content_to_text(content: str | list | None) -> str:
+    """Convierte el contenido de un mensaje OpenAI (string o lista de partes)
+    a texto plano.
+
+    OpenWebUI, cuando hay archivos adjuntos, envía el mensaje del usuario con
+    `content` como una LISTA de partes (p. ej. `[{"type":"text","text":...},
+    {"type":"file",...}]` o con tags `<file .../>`). Esta función extrae el
+    texto y conserva los tags de archivo para que el agente pueda ver el
+    `file_id` del archivo adjunto.
+    """
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for part in content:
+            if isinstance(part, str):
+                parts.append(part)
+            elif isinstance(part, dict):
+                part_type = part.get("type", "")
+                if part_type == "text":
+                    parts.append(str(part.get("text", "")))
+                elif part_type == "file":
+                    # Conservar el tag de archivo con su id/url para que el
+                    # agente pueda invocar `agregar_material_archivo`.
+                    file = part.get("file", {}) or {}
+                    fid = file.get("file_id") or part.get("id") or ""
+                    fname = file.get("filename") or part.get("name") or "archivo"
+                    parts.append(f'<file id="{fid}" name="{fname}"/>')
+                else:
+                    # Cualquier otra parte: intentar extraer texto.
+                    text = part.get("text") or part.get("content") or ""
+                    if text:
+                        parts.append(str(text))
+        return "\n".join(p for p in parts if p)
+    return str(content)
+
+
 def _to_langgraph_messages(messages: list[ChatMessage]) -> list[dict]:
     """Convierte mensajes del formato OpenAI al formato de LangGraph."""
     out = []
     for m in messages:
         if m.role in ("system", "user", "assistant", "tool"):
-            out.append({"role": m.role, "content": m.content})
+            out.append({"role": m.role, "content": _content_to_text(m.content)})
     return out
 
 

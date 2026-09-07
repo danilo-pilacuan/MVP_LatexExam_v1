@@ -380,7 +380,12 @@ def evaluator_node(state: dict) -> dict:
 # 5. Ensamblador
 # ---------------------------------------------------------------------------
 def assembler_node(state: dict) -> dict:
-    """Arma el `CompiledExam` y genera el LaTeX final."""
+    """Arma el `CompiledExam` y genera el LaTeX final.
+
+    Si el blueprint pide varias versiones (`metadata` con `num_versions`),
+    genera múltiples fuentes LaTeX (preguntas y opciones barajadas, estilo
+    AMC anti-copia). Si no, genera una sola versión (comportamiento previo).
+    """
     blueprint: ExamBlueprint = state["blueprint"]
     items: list[GeneratedItem] = state.get("approved_items", [])
 
@@ -389,67 +394,101 @@ def assembler_node(state: dict) -> dict:
         blueprint=blueprint,
         items=items,
     )
-    latex_source = render_exam(
+
+    # Nº de versiones desde el blueprint (default 1).
+    num_versions = getattr(blueprint.metadata, "num_versions", 1) or 1
+
+    rendered = render_exam(
         exam,
         state["template_id"],
         state["subject_name"],
         instructions=blueprint.metadata.instructions or "Responda todas las preguntas en el espacio indicado.",
         duration_minutes=blueprint.estimated_duration_minutes,
         print_answers=True,
+        num_versions=num_versions,
     )
-    return {"compiled_exam": exam, "latex_source": latex_source}
+
+    # Normalizar a lista (render_exam devuelve str si num_versions<=1).
+    if isinstance(rendered, str):
+        latex_sources = [rendered]
+    else:
+        latex_sources = rendered
+
+    return {
+        "compiled_exam": exam,
+        "latex_source": latex_sources[0],          # compatibilidad: primera versión
+        "latex_sources": latex_sources,            # todas las versiones
+    }
 
 
 # ---------------------------------------------------------------------------
 # 6. Compilador LaTeX
 # ---------------------------------------------------------------------------
 def compiler_node(state: dict) -> dict:
-    """Envía el LaTeX al microservicio compilador y guarda el PDF resultante."""
-    latex_source = state.get("latex_source")
-    if not latex_source:
-        return {
-            "status": "failed",
-            "error_message": "No hay latex_source para compilar",
-        }
+    """Envía el LaTeX al microservicio compilador y guarda el PDF resultante.
+
+    Si hay varias versiones (`latex_sources`), compila cada una y devuelve
+    una lista de rutas de PDFs (`pdf_paths`). Si no, compila la única
+    versión (comportamiento previo con `pdf_path`).
+    """
+    latex_sources = state.get("latex_sources") or []
+    if not latex_sources:
+        single = state.get("latex_source")
+        if single:
+            latex_sources = [single]
+        else:
+            return {
+                "status": "failed",
+                "error_message": "No hay latex_source para compilar",
+            }
 
     compilation_attempts = state.get("compilation_attempts", 0) + 1
-    try:
-        resp = requests.post(
-            settings.latex_compiler_url,
-            json={"latex_code": latex_source},
-            timeout=60,
-        )
-        resp.raise_for_status()
-        payload = resp.json()
+    pdf_paths: list[str] = []
+    logs = []
+    all_success = True
 
-        if payload.get("status") == "success":
-            pdf_path = payload.get("pdf_path")
-            return {
-                "compiled_exam": state["compiled_exam"].model_copy(
-                    update={"pdf_path": pdf_path, "compilation_attempts": compilation_attempts}
-                ),
-                "compilation_attempts": compilation_attempts,
-                "compilation_log": [
-                    {"attempt_number": compilation_attempts, "success": True, "error_excerpt": None}
-                ],
-                "status": "completed",
-            }
-        # Error de compilación (log de LaTeX).
-        error_excerpt = (payload.get("error_log") or "")[-300:]
-        return {
-            "compilation_attempts": compilation_attempts,
-            "compilation_log": [
-                {"attempt_number": compilation_attempts, "success": False, "error_excerpt": error_excerpt}
-            ],
-            "status": "failed" if compilation_attempts >= settings.max_compilation_attempts else "in_progress",
-            "error_message": f"LaTeX error: {error_excerpt[:200]}",
-        }
-    except Exception as e:  # noqa: BLE001
-        return {
-            "compilation_attempts": compilation_attempts,
-            "compilation_log": [
-                {"attempt_number": compilation_attempts, "success": False, "error_excerpt": _extract_error_excerpt(e)}
-            ],
-            "status": "failed" if compilation_attempts >= settings.max_compilation_attempts else "in_progress",
-            "error_message": f"Compilación falló: {_extract_error_excerpt(e)}",
-        }
+    for idx, latex_source in enumerate(latex_sources):
+        try:
+            resp = requests.post(
+                settings.latex_compiler_url,
+                json={"latex_code": latex_source},
+                timeout=60,
+            )
+            resp.raise_for_status()
+            payload = resp.json()
+
+            if payload.get("status") == "success":
+                pdf_paths.append(payload.get("pdf_path"))
+                logs.append({"attempt_number": compilation_attempts, "version": idx + 1, "success": True, "error_excerpt": None})
+            else:
+                all_success = False
+                error_excerpt = (payload.get("error_log") or "")[-300:]
+                logs.append({"attempt_number": compilation_attempts, "version": idx + 1, "success": False, "error_excerpt": error_excerpt})
+        except Exception as e:  # noqa: BLE001
+            all_success = False
+            logs.append({"attempt_number": compilation_attempts, "version": idx + 1, "success": False, "error_excerpt": _extract_error_excerpt(e)})
+
+    # Actualizar el CompiledExam con las rutas de los PDFs.
+    exam = state.get("compiled_exam")
+    if exam is not None and pdf_paths:
+        exam = exam.model_copy(
+            update={"pdf_path": pdf_paths[0], "pdf_paths": pdf_paths, "compilation_attempts": compilation_attempts}
+        )
+
+    update: dict = {
+        "compilation_attempts": compilation_attempts,
+        "compilation_log": logs,
+        "pdf_paths": pdf_paths,
+    }
+    if exam is not None:
+        update["compiled_exam"] = exam
+
+    if all_success and pdf_paths:
+        update["status"] = "completed"
+    elif compilation_attempts >= settings.max_compilation_attempts:
+        update["status"] = "failed"
+        update["error_message"] = "Alguna versión del examen no compiló."
+    else:
+        update["status"] = "in_progress"
+        update["error_message"] = "Alguna versión del examen no compiló."
+    return update

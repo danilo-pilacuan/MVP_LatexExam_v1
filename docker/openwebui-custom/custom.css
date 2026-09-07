@@ -1,0 +1,39 @@
+/* ============================================================
+   OpenWebUI - Personalización del "Generador de Exámenes"
+   Este CSS se carga automáticamente desde
+   /app/backend/open_webui/static/custom.css
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   1. Menú de adjuntos ("More" / "+"): ocultar opciones que no
+      deben estar disponibles. Solo se dejan las de archivos.
+   ------------------------------------------------------------ */
+
+/* Ocultar "Capture" (captura de pantalla/cámara) */
+button:has(svg path[d^="M2 19V9C2 7.89543"]) { display: none !important; }
+
+/* Ocultar "Adjuntar página web" */
+button:has(svg path[d^="M12 21a9.004"]) { display: none !important; }
+
+/* Ocultar "Adjuntar conocimiento / knowledge" */
+button:has(svg path[d^="M5 12V18C5 18 5 21 12 21C19 21 19 18 19 18V12"]) { display: none !important; }
+
+/* Ocultar "Referenciar chats" */
+button:has(svg path[d^="M12 6L12 12L18 12"]) { display: none !important; }
+
+/* ------------------------------------------------------------
+   2. Selector de modelo: ocultar el botón que muestra el
+      modelo seleccionado (solo hay un agente: exam-agent).
+   ------------------------------------------------------------ */
+button[aria-label^="Selected model"],
+button:has([aria-label^="Selected model"]) { display: none !important; }
+
+/* Selector de modelo en la barra de entrada del chat */
+[class*="model-selector"],
+[class*="model-select"] { display: none !important; }
+
+/* ------------------------------------------------------------
+   3. Menú "Integrations": ocultar el botón completo.
+   ------------------------------------------------------------ */
+button[aria-label="Integrations"],
+button:has([aria-label="Integrations"]) { display: none !important; }

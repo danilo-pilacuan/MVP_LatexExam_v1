@@ -57,11 +57,15 @@ services:
       OPENWEBUI_PUBLIC_URL: http://localhost:3000
       OPENWEBUI_ADMIN_EMAIL: admin@localhost
       OPENWEBUI_ADMIN_PASSWORD: admin
+      # Directorio raíz del material de las materias (montado en /app/inputs).
+      MATERIAL_ROOT: /app/inputs
     ports:
       - "8000:8000"
-    # Compartir el directorio de salida con el latex-compiler para servir los PDFs.
+    # Compartir el directorio de salida con el latex-compiler para servir los PDFs,
+    # y montar el directorio de material para guardar los archivos subidos en el chat.
     volumes:
       - ../data/agent_outputs:/app/output
+      - ../data/inputs:/app/inputs
     depends_on:
       - postgres-db
       - latex-compiler
@@ -79,8 +83,59 @@ services:
       OPENAI_API_BASE_URLS: http://exam-app:8000/v1
       OPENAI_API_KEYS: no-key
       WEBUI_AUTH: "false"   # sin login para el MVP (un solo usuario)
+      # Clave secreta estable: mantiene sesiones válidas entre reinicios
+      WEBUI_SECRET_KEY: "ee95d3be2fee38ba92098420869c00ff4c15e457dbbf18518db9e0542f9b7724"
+
+      # ===== Modo "chat de producción" =====
+      # Forzar que las variables de entorno manden (no valores persistidos en DB)
+      ENABLE_PERSISTENT_CONFIG: "false"
+      # Marca/identidad de la interfaz
+      WEBUI_NAME: "Generador de Exámenes"
+      # Pre-seleccionar el agente exam-agent en cada chat nuevo
+      DEFAULT_MODELS: "exam-agent"
+      # Ocultar el botón "Controls" (agente, system prompt, parámetros, valves)
+      USER_PERMISSIONS_CHAT_CONTROLS: "false"
+      USER_PERMISSIONS_CHAT_VALVES: "false"
+      USER_PERMISSIONS_CHAT_SYSTEM_PROMPT: "false"
+      USER_PERMISSIONS_CHAT_PARAMS: "false"
+      # Restringir el selector: un solo modelo por chat
+      USER_PERMISSIONS_CHAT_MULTIPLE_MODELS: "false"
+      # Todos los usuarios ven todos los modelos (MVP de un solo agente)
+      BYPASS_MODEL_ACCESS_CONTROL: "true"
+      # Ocultar chat temporal y otras acciones no deseadas en producción
+      USER_PERMISSIONS_CHAT_TEMPORARY: "false"
+      USER_PERMISSIONS_CHAT_TEMPORARY_ENFORCED: "false"
+      # Permitir SOLO subir archivos en el chat (ocultar "Adjuntar página web")
+      USER_PERMISSIONS_CHAT_FILE_UPLOAD: "true"
+      USER_PERMISSIONS_CHAT_WEB_UPLOAD: "false"
+      # Ocultar funcionalidades no necesarias en producción
+      ENABLE_PLUGINS: "false"
+      ENABLE_NOTES: "false"
+      ENABLE_MEMORIES: "false"
+      ENABLE_CHANNELS: "false"
+      ENABLE_CALENDAR: "false"
+      ENABLE_FOLDERS: "false"
+      ENABLE_AUTOMATIONS: "false"
+      ENABLE_EVALUATION_ARENA_MODELS: "false"
+      ENABLE_MESSAGE_RATING: "false"
+      ENABLE_COMMUNITY_SHARING: "false"
+      ENABLE_IMAGE_GENERATION: "false"
+      ENABLE_TAGS_GENERATION: "false"
+      ENABLE_FOLLOW_UP_GENERATION: "false"
+      ENABLE_TITLE_GENERATION: "false"
+      ENABLE_AUTOCOMPLETE_GENERATION: "false"
+      # Acceso al workspace (ocultar modelos/knl/prompts/tools/skills)
+      USER_PERMISSIONS_WORKSPACE_MODELS_ACCESS: "false"
+      USER_PERMISSIONS_WORKSPACE_KNOWLEDGE_ACCESS: "false"
+      USER_PERMISSIONS_WORKSPACE_PROMPTS_ACCESS: "false"
+      USER_PERMISSIONS_WORKSPACE_TOOLS_ACCESS: "false"
+      USER_PERMISSIONS_WORKSPACE_SKILLS_ACCESS: "false"
+      # Sugerencias de inicio relevantes para el generador de exámenes
+      DEFAULT_PROMPT_SUGGESTIONS: '[{"title":["¿Qué materias","hay registradas?"],"content":"¿Qué materias hay registradas?"},{"title":["Genera un examen","de Economía Aplicada"],"content":"Genera un examen de Economía Aplicada"},{"title":["Preguntas de repaso","de Inglés Técnico"],"content":"Hazme preguntas de repaso de Inglés Técnico"},{"title":["Registra una pregunta","sobre elasticidad"],"content":"Registra una pregunta sobre elasticidad en Economía Aplicada"}]'
     volumes:
       - open_webui_data:/app/backend/data
+      # Inyectar CSS personalizado (ocultar opciones de adjuntos y selector de modelo)
+      - ./openwebui-custom/custom.css:/app/backend/open_webui/static/custom.css:ro
     depends_on:
       - exam-app
 

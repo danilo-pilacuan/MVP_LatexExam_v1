@@ -24,6 +24,8 @@ class QuestionType(str, Enum):
     VERDADERO_FALSO = "verdadero_falso"
     RESPUESTA_CORTA = "respuesta_corta"
     DESARROLLO = "desarrollo"
+    RELLENO = "relleno"            # completar: se usa \fillin con la respuesta
+    TODAS_CORRECTAS = "todas_correctas"  # marcar TODAS las correctas (\multiplechoice)
 
 
 class AnswerOption(BaseModel):
@@ -67,6 +69,12 @@ class GeneratedItem(BaseModel):
                 raise ValueError("opcion_multiple requiere exactamente una opción correcta")
         if question_type == QuestionType.VERDADERO_FALSO and len(options) != 2:
             raise ValueError("verdadero_falso requiere exactamente 2 opciones")
+        if question_type == QuestionType.TODAS_CORRECTAS:
+            if len(options) < 2:
+                raise ValueError("todas_correctas requiere al menos 2 opciones")
+            correct = [o for o in options if o.is_correct]
+            if len(correct) < 1:
+                raise ValueError("todas_correctas requiere al menos una opción correcta")
         return options
 
 
@@ -102,6 +110,10 @@ class ExamMetadata(BaseModel):
     reasoning_effort: str | None = Field(default=None)
     experiment_tag: str = Field(default="", description="Etiqueta para comparar experimentos")
     notes: str = Field(default="")
+    num_versions: int = Field(
+        default=1, ge=1, le=10,
+        description="Nº de versiones del examen (barajado anti-copia, estilo AMC)",
+    )
 
 
 class ExamBlueprint(BaseModel):
@@ -137,6 +149,7 @@ class CompiledExam(BaseModel):
     items: list[GeneratedItem]
     latex_source: Optional[str] = None
     pdf_path: Optional[str] = None
+    pdf_paths: Optional[list[str]] = None  # rutas de las versiones (si num_versions>1)
     compilation_attempts: int = 0
 
 class ItemSpec(BaseModel):

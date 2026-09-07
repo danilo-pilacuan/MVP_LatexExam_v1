@@ -69,3 +69,38 @@ def build_attachment_markdown(upload_result: dict) -> str:
         f"📥 [Descargar el PDF]({content_url})\n\n"
         f"*También disponible en: `{content_url}`*"
     )
+
+
+def get_file_metadata(file_id: str) -> dict:
+    """Obtiene la metadata de un archivo de Open WebUI (nombre, tipo, contenido).
+
+    Devuelve el dict del archivo tal como lo expone `/api/v1/files/{id}`.
+    Si el archivo no existe o no se puede acceder, lanza una excepción.
+    """
+    token = _login_token()
+    headers = {"Authorization": f"Bearer {token}"}
+    resp = requests.get(
+        f"{settings.openwebui_url}/api/v1/files/{file_id}",
+        headers=headers,
+        timeout=30,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def download_file_content(file_id: str) -> bytes:
+    """Descarga el binario de un archivo de Open WebUI.
+
+    Si el archivo no tiene contenido binario accesible o falla, lanza una
+    excepción con un mensaje claro.
+    """
+    token = _login_token()
+    headers = {"Authorization": f"Bearer {token}"}
+    resp = requests.get(
+        f"{settings.openwebui_url}/api/v1/files/{file_id}/content",
+        headers=headers,
+        timeout=60,
+    )
+    resp.raise_for_status()
+    return resp.content
+

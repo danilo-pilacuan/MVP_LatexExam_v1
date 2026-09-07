@@ -29,6 +29,24 @@ _OFF_TOPIC_KEYWORDS = [
     "chisme", "política general", "clima", "viaje", "música", "videojuego",
 ]
 
+# Ítem pendiente de guardar (generado pero aún no persistido). Lo rellena
+# `generar_pregunta` y lo consume `guardar_pregunta_pendiente`. Es un puente
+# porque las tools de LangGraph no reciben el estado directamente.
+_PENDING_ITEM: dict | None = None
+_PENDING_SUBJECT_ID: str | None = None
+
+
+def get_pending_item() -> tuple[dict | None, str | None]:
+    """Devuelve (item_pendiente, subject_id)."""
+    return _PENDING_ITEM, _PENDING_SUBJECT_ID
+
+
+def set_pending_item(item: dict | None, subject_id: str | None) -> None:
+    """Guarda el ítem pendiente para que `guardar_pregunta_pendiente` lo use."""
+    global _PENDING_ITEM, _PENDING_SUBJECT_ID
+    _PENDING_ITEM = item
+    _PENDING_SUBJECT_ID = subject_id
+
 
 def _validate_exam_topic(topic: str) -> str | None:
     """Devuelve un mensaje de rechazo si el tema está fuera del ámbito, o None."""
@@ -140,6 +158,10 @@ def generar_pregunta(
     except Exception as e:  # noqa: BLE001
         return f"❌ No pude generar la pregunta: {str(e)[:200]}"
 
+    # Guardar el ítem pendiente para que, al confirmar, `guardar_pregunta_pendiente`
+    # lo persista sin que el LLM tenga que re-especificar todos los datos.
+    set_pending_item(item.model_dump(), subject_id)
+
     # No se guarda aún: se devuelve para revisión humana (HITL).
     return (
         "Generé esta pregunta (aún NO está guardada):\n\n"
@@ -239,6 +261,81 @@ def confirmar_verificacion_humana(question_id: str) -> str:
 
 
 @tool
+def guardar_pregunta_pendiente(verificar_humano: bool = False) -> str:
+    """Guarda en el banco la ÚLTIMA pregunta generada (pendiente de confirmación).
+
+    Usa los datos de la pregunta que `generar_pregunta` dejó pendiente, así el
+    LLM no tiene que re-especificar todos los campos. Si `verificar_humano=True`,
+    además la marca como verificada por humano (tras confirmación del profesor).
+    """
+    item, subject_id = get_pending_item()
+    if not item or not subject_id:
+        return (
+            "No hay una pregunta pendiente de guardar. Primero genera una pregunta "
+            "con la tool `generar_pregunta`."
+        )
+
+    from src.embeddings import embedder
+    from src.agents.verifier import review_question
+
+    # Embedding para guardar (RAG de preguntas).
+    vec = embedder.embed([item["statement"]])[0]
+
+    # Verificación por IA antes de persistir.
+    review = review_question(item)
+
+    q = bank.create_question(
+        subject_id=subject_id,
+        topic=item["topic"],
+        bloom_level=item["bloom_level"],
+        difficulty=item["difficulty"],
+        question_text=item["statement"],
+        embedding=vec,
+        question_type=item.get("question_type"),
+        options=item.get("options"),
+        expected_answer=item.get("expected_answer"),
+        solution_explanation=item.get("solution_explanation"),
+        subtopic=item.get("subtopic"),
+        points=item.get("points", 1.0),
+        source="chat",
+        created_by="agent",
+        verified_by_ai=review.verified_by_ai,
+        ai_review_notes=review.notes,
+        ai_review_priority=review.priority,
+    )
+
+    # Limpiar el pendiente.
+    set_pending_item(None, None)
+
+    review_note = (
+        f"\n🔍 **Verificación por IA:** {'aprobada' if review.verified_by_ai else 'requiere revisión'} "
+        f"(prioridad {review.priority}). {review.notes}"
+        if review.notes
+        else ""
+    )
+
+    # Si el profesor confirmó la verificación humana, marcarla.
+    if verificar_humano:
+        try:
+            bank.set_human_verification(q.id, verified=True)
+        except Exception as e:  # noqa: BLE001
+            return (
+                f"✅ Pregunta guardada (id: {q.id}).{review_note}\n"
+                f"⚠️ No se pudo marcar como verificada: {str(e)[:120]}"
+            )
+        return (
+            f"✅ Pregunta guardada y **verificada por humano** (id: {q.id}).{review_note}\n"
+            "A partir de ahora no podrá ser modificada por el agente."
+        )
+
+    return (
+        f"✅ Pregunta guardada en el banco (id: {q.id}).{review_note}\n"
+        "Aún NO está marcada como verificada por humano. "
+        "¿La confirmas como verificada?"
+    )
+
+
+@tool
 def listar_materias() -> str:
     """Lista las materias registradas en el sistema.
 
@@ -270,12 +367,16 @@ def generar_examen_pdf(
     subject_name: str,
     total_questions: int = 5,
     use_bank: bool = True,
+    num_versions: int = 1,
 ) -> str:
     """Genera un examen a partir del banco de preguntas y devuelve un PDF.
 
     Construye un examen usando las preguntas YA EXISTENTES del banco de la
     materia (si `use_bank=True`) o generando nuevas. Compila el LaTeX a PDF
-    y devuelve la ruta del PDF generado en `data/agent_outputs/`.
+    y lo sube como adjunto a Open WebUI.
+
+    Si `num_versions > 1`, genera varias versiones del examen (preguntas y
+    opciones barajadas, estilo AMC anti-copia) y adjunta cada PDF.
     """
     from src.agents.graph import run_exam_pipeline
     from src.schemas.exam import (
@@ -316,6 +417,7 @@ def generar_examen_pdf(
         topics_weight={"General": 1.0},
         estimated_duration_minutes=60,
     )
+    blueprint.metadata.num_versions = num_versions
 
     try:
         result = run_exam_pipeline(
@@ -329,36 +431,196 @@ def generar_examen_pdf(
     except Exception as e:  # noqa: BLE001
         return f"❌ Error al generar el examen: {str(e)[:300]}"
 
-    pdf_path = None
+    # Rutas de los PDFs (varias si num_versions>1).
+    pdf_paths = None
     if result.get("compiled_exam"):
-        pdf_path = result["compiled_exam"].pdf_path
+        pdf_paths = result["compiled_exam"].pdf_paths or (
+            [result["compiled_exam"].pdf_path] if result["compiled_exam"].pdf_path else None
+        )
 
-    if not pdf_path:
+    if not pdf_paths:
         return (
             "No se pudo compilar el PDF del examen. "
             f"Status: {result.get('status')} · Error: {result.get('error_message', 'desconocido')}"
         )
 
-    # Subir el PDF a Open WebUI como adjunto nativo del chat.
+    # Subir cada PDF a Open WebUI como adjunto nativo del chat.
     try:
         from src.api.openwebui import upload_file_to_openwebui, build_attachment_markdown
 
-        upload_result = upload_file_to_openwebui(pdf_path)
-        attachment_md = build_attachment_markdown(upload_result)
+        attachments = []
+        for pdf_path in pdf_paths:
+            upload_result = upload_file_to_openwebui(pdf_path)
+            attachments.append(build_attachment_markdown(upload_result))
+        attachment_md = "\n\n".join(attachments)
     except Exception as e:  # noqa: BLE001
         # Si falla la subida, caemos al enlace HTTP directo.
-        filename = Path(pdf_path).name
+        links = "\n".join(
+            f"- 📥 [Descargar PDF v{i + 1}](http://localhost:8000/output/{Path(p).name})"
+            for i, p in enumerate(pdf_paths)
+        )
         attachment_md = (
             f"📄 **Examen generado y compilado a PDF.**\n"
             f"- Materia: **{subject_name}**\n"
             f"- Preguntas: {len(result.get('approved_items', []))}\n"
-            f"- 📥 [Descargar PDF](http://localhost:8000/output/{filename})\n\n"
+            f"{links}\n\n"
             f"*(No se pudo adjuntar a Open WebUI: {str(e)[:120]})*"
         )
 
+    version_note = f" · Versiones: {num_versions}" if num_versions > 1 else ""
     return (
         f"✅ **Examen generado correctamente.**\n"
         f"- Materia: **{subject_name}**\n"
-        f"- Preguntas: {len(result.get('approved_items', []))}\n\n"
+        f"- Preguntas: {len(result.get('approved_items', []))}{version_note}\n\n"
         f"{attachment_md}"
     )
+
+
+@tool
+def agregar_material_archivo(
+    file_id: str,
+    subject_id: str,
+    subject_name: str,
+    clear_previous: bool = False,
+) -> str:
+    """Agrega un archivo adjunto del chat como material de estudio de una materia.
+
+    Descarga el archivo subido a Open WebUI (identificado por su `file_id`),
+    extrae su texto, lo divide en fragmentos e indexa esos fragmentos en la
+    materia indicada (para que el agente pueda usarlos como contexto RAG al
+    generar preguntas o examenes).
+
+    Args:
+        file_id: id del archivo adjunto en Open WebUI (viene en el tag
+            `<file id="..."/>` del mensaje del usuario).
+        subject_id: id de la materia a la que agregar el material.
+        subject_name: nombre de la materia (para confirmación).
+        clear_previous: si True, reemplaza el material previo de ese archivo.
+    """
+    from src.bank.material import index_text_for_subject
+    from src.api.openwebui import get_file_metadata, download_file_content
+
+    # 1) Obtener metadata del archivo (nombre, tipo).
+    try:
+        meta = get_file_metadata(file_id)
+    except Exception as e:  # noqa: BLE001
+        return (
+            f"❌ No pude acceder al archivo adjunto (id: {file_id}). "
+            f"Detalle: {str(e)[:200]}"
+        )
+
+    filename = meta.get("filename", "archivo")
+    data = meta.get("data", {}) or {}
+    # Open WebUI ya extrae el contenido textual del archivo en `data.content`.
+    content = data.get("content") or ""
+
+    # 2) Descargar el binario del archivo (para guardarlo físicamente en el
+    #    repositorio de material de la materia).
+    raw_bytes: bytes | None = None
+    try:
+        raw_bytes = download_file_content(file_id)
+    except Exception:  # noqa: BLE001
+        raw_bytes = None
+
+    # 3) Si Open WebUI no extrajo el contenido, extraerlo del binario.
+    if not content.strip() and raw_bytes:
+        try:
+            from src.bank.material import extract_file_text
+
+            tmp_path = Path(f"/tmp/owui_{file_id}")
+            tmp_path.write_bytes(raw_bytes)
+            content = extract_file_text(tmp_path)
+            tmp_path.unlink(missing_ok=True)
+        except Exception as e:  # noqa: BLE001
+            return (
+                f"❌ No pude extraer el contenido del archivo '{filename}'. "
+                f"Detalle: {str(e)[:200]}"
+            )
+
+    if not content.strip():
+        return (
+            f"⚠️ El archivo '{filename}' no contiene texto extraíble "
+            "(puede ser una imagen escaneada o un formato no soportado)."
+        )
+
+    # 4) Guardar el archivo físico en el directorio de material de la materia.
+    saved_path = None
+    if raw_bytes:
+        try:
+            from src.bank.material import save_file_to_subject_folder
+
+            saved_path = save_file_to_subject_folder(raw_bytes, filename, subject_name)
+        except Exception as e:  # noqa: BLE001
+            saved_path = None  # no bloquear la indexación si falla el guardado físico
+
+    # 5) Indexar el contenido en la materia (RAG).
+    try:
+        res = index_text_for_subject(
+            text=content,
+            subject_id=subject_id,
+            source_label=f"chat:{filename}",
+            clear_previous=clear_previous,
+        )
+    except Exception as e:  # noqa: BLE001
+        return f"❌ Error al indexar el material: {str(e)[:200]}"
+
+    if res.get("chunks_guardados", 0) == 0:
+        return f"⚠️ No se pudo indexar el archivo '{filename}': {res.get('mensaje', '')}"
+
+    # Construir la confirmación (incluye si se guardó el archivo físico).
+    lines = [
+        f"✅ Material agregado a la materia **{subject_name}**.",
+        f"- Archivo: **{filename}**",
+        f"- Fragmentos indexados: **{res['chunks_guardados']}**",
+    ]
+    if saved_path:
+        lines.append(f"- 📁 Archivo guardado en el repositorio de material: `{saved_path}`")
+    else:
+        lines.append("- ⚠️ El archivo físico no se pudo guardar en el repositorio (solo se indexó el texto en la BD).")
+    lines.append("\nEl agente ahora puede usar este material como contexto al generar preguntas o exámenes de la materia.")
+    return "\n".join(lines)
+
+
+@tool
+def listar_material_materia(subject_id: str) -> str:
+    """Lista el material de estudio indexado de una materia.
+
+    Úsala cuando el profesor pregunte qué material hay disponible para una
+    materia, o para verificar si un archivo quedó indexado. Devuelve los
+    archivos fuente y el número de fragmentos indexados de cada uno.
+    """
+    from src.database.connection import SessionLocal
+    from src.database.models import Subject, MaterialChunk
+
+    db = SessionLocal()
+    try:
+        subject = db.get(Subject, subject_id)
+        if subject is None:
+            return f"No existe la materia con id `{subject_id}`."
+
+        rows = (
+            db.query(MaterialChunk.source_file, MaterialChunk.subject_id)
+            .filter(MaterialChunk.subject_id == subject.id)
+            .all()
+        )
+    finally:
+        db.close()
+
+    if not rows:
+        return (
+            f"La materia **{subject.name}** no tiene material indexado todavía. "
+            "Puedes subir un archivo adjunto al chat y pedirme que lo agregue."
+        )
+
+    # Agrupar por archivo fuente.
+    from collections import Counter
+
+    counts = Counter(source for source, _ in rows)
+
+    lines = [f"📚 Material indexado de **{subject.name}**:\n"]
+    for source, count in sorted(counts.items()):
+        lines.append(f"- **{source}** · {count} fragmento(s)")
+    lines.append("\nEste material se usa como contexto RAG para generar preguntas y exámenes.")
+    return "\n".join(lines)
+
+

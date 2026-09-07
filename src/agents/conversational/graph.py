@@ -22,11 +22,14 @@ from langchain_core.messages import ToolMessage
 from src.agents.conversational.prompts import SYSTEM_PROMPT
 from src.agents.conversational.state import ConversationalState
 from src.agents.conversational.tools import (
+    agregar_material_archivo,
     buscar_preguntas,
     confirmar_verificacion_humana,
     generar_examen_pdf,
     generar_pregunta,
     guardar_pregunta,
+    guardar_pregunta_pendiente,
+    listar_material_materia,
     listar_materias,
 )
 from src.agents.llm import get_llm
@@ -37,13 +40,17 @@ TOOLS = [
     buscar_preguntas,
     generar_pregunta,
     guardar_pregunta,
+    guardar_pregunta_pendiente,
     confirmar_verificacion_humana,
     generar_examen_pdf,
+    agregar_material_archivo,
+    listar_material_materia,
 ]
 TOOL_BY_NAME = {t.name: t for t in TOOLS}
 
-# Tools que implican ESCRITURA en la BD → requieren confirmación humana.
-WRITE_TOOLS = {"guardar_pregunta", "confirmar_verificacion_humana"}
+# Tools que implican ESCRITURA en la BD. Ya no usan `interrupt` (Open WebUI no
+# puede reanudarlo): la confirmación humana se maneja a nivel de prompt/LLM.
+WRITE_TOOLS = {"guardar_pregunta", "guardar_pregunta_pendiente", "confirmar_verificacion_humana"}
 
 
 def _make_llm():
@@ -69,10 +76,11 @@ def _assistant_node(state: ConversationalState) -> dict:
 
 
 def _call_tools_node(state: ConversationalState) -> dict:
-    """Ejecuta las tool calls del último mensaje, con human-in-the-loop.
+    """Ejecuta las tool calls del último mensaje.
 
-    Para las tools de escritura, se usa `interrupt` para pausar el grafo y
-    pedir confirmación humana. Si se reanuda sin aprobación, no se ejecuta.
+    Las tools de escritura se ejecutan directamente (sin `interrupt`): la
+    confirmación humana se maneja a nivel de prompt/LLM, que es compatible con
+    Open WebUI (que no puede reanudar interrupts de LangGraph).
     """
     last_message = state["messages"][-1]
     tool_calls = getattr(last_message, "tool_calls", []) or []
@@ -85,35 +93,11 @@ def _call_tools_node(state: ConversationalState) -> dict:
         args = tool_call.get("args", {})
         tool_id = tool_call["id"]
 
-        # Guardrail: ¿es una tool de escritura?
-        if name in WRITE_TOOLS:
-            # Pausar y pedir confirmación humana.
-            decision = interrupt(
-                {
-                    "type": "confirm_write",
-                    "tool": name,
-                    "args": args,
-                    "message": (
-                        "¿Confirmas esta acción de escritura en el banco de preguntas? "
-                        "Responde 'sí' para aprobar o 'no' para cancelar."
-                    ),
-                }
-            )
-            approved = bool(decision) and decision.get("approved", False)
-            if not approved:
-                results.append(
-                    ToolMessage(
-                        content=(
-                            "Acción de escritura cancelada por el profesor. "
-                            "No se realizó ningún cambio en el banco."
-                        ),
-                        tool_call_id=tool_id,
-                    )
-                )
-                continue
-
-        # Ejecutar la tool (aprobada o de solo lectura).
-        tool = TOOL_BY_NAME[name]
+        # Ejecutar la tool (lectura o escritura).
+        tool = TOOL_BY_NAME.get(name)
+        if tool is None:
+            results.append(ToolMessage(content=f"❌ Tool desconocida: {name}", tool_call_id=tool_id))
+            continue
         try:
             content = tool.invoke(args)
         except Exception as e:  # noqa: BLE001

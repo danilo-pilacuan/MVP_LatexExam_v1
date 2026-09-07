@@ -55,7 +55,9 @@ class ExamGenerationState(TypedDict):
 
     # --- Ensamblado y compilación LaTeX ---
     latex_source: Optional[str]
+    latex_sources: Optional[list[str]]   # fuentes LaTeX de las versiones (si num_versions>1)
     compiled_exam: Optional[CompiledExam]
+    pdf_paths: Optional[list[str]]       # rutas de los PDFs de las versiones
     compilation_attempts: int
     max_compilation_attempts: int
     compilation_log: Annotated[list[CompilationLogEntry], operator.add]
