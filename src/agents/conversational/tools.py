@@ -624,3 +624,45 @@ def listar_material_materia(subject_id: str) -> str:
     return "\n".join(lines)
 
 
+@tool
+def registrar_materia(nombre: str) -> str:
+    """Registra una NUEVA materia en el sistema.
+
+    Úsala cuando el profesor pida registrar una materia que aún no existe
+    (por ejemplo 'registra la materia Economía Aplicada'). Crea la materia
+    y devuelve su id para poder trabajar con ella.
+
+    Args:
+        nombre: nombre de la materia a registrar (ej. 'Economía Aplicada').
+    """
+    from src.database.connection import SessionLocal
+    from src.database.models import Subject, MaterialChunk
+
+    nombre = nombre.strip()
+    if not nombre:
+        return "⚠️ Debes indicar el nombre de la materia a registrar."
+
+    db = SessionLocal()
+    try:
+        # Evitar duplicados por nombre (case-insensitive).
+        existing = db.query(Subject).filter(Subject.name.ilike(nombre)).first()
+        if existing is not None:
+            return (
+                f"ℹ️ La materia **{existing.name}** ya está registrada "
+                f"(id: `{existing.id}`). No se creó un duplicado."
+            )
+        subject = Subject(name=nombre)
+        db.add(subject)
+        db.commit()
+        db.refresh(subject)
+        return (
+            f"✅ Materia **{subject.name}** registrada correctamente.\n"
+            f"- Id: `{subject.id}`\n\n"
+            "Ya puedes agregar material de estudio, generar preguntas o armar "
+            "exámenes de esta materia."
+        )
+    finally:
+        db.close()
+
+
+

@@ -31,6 +31,7 @@ from src.agents.conversational.tools import (
     guardar_pregunta_pendiente,
     listar_material_materia,
     listar_materias,
+    registrar_materia,
 )
 from src.agents.llm import get_llm
 from src.config import settings
@@ -45,6 +46,7 @@ TOOLS = [
     generar_examen_pdf,
     agregar_material_archivo,
     listar_material_materia,
+    registrar_materia,
 ]
 TOOL_BY_NAME = {t.name: t for t in TOOLS}
 

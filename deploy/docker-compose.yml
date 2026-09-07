@@ -1,0 +1,149 @@
+# ============================================================
+# docker-compose.yml — Despliegue remoto en 172.28.230.10
+# (DGX H200 USFQ, usuario dpilacuan)
+#
+# PRINCIPIOS DE DISEÑO (para no dañar el servidor de la institución):
+#   1. TODO vive en ~/my_containers/exam/ (directorio del usuario).
+#   2. Red AISLADA propia (no usa la red del host).
+#   3. LÍMITES de CPU/memoria estrictos (nunca satura el host).
+#   4. restart: "no" — NO auto-arranca al iniciar el servidor.
+#   5. Sin montar rutas del sistema; solo volúmenes nombrados y
+#      directorios bajo el home del usuario.
+#   6. Fácil de eliminar: `down.sh` quita contenedores+volúmenes
+#      conservando los datos en el home.
+#
+# PUERTOS (rango alto 39000+, para no chocar con otros servicios):
+#   - 39000 -> postgres (5432)
+#   - 39001 -> open-webui (8080)
+#   - 39002 -> exam-app / API (8000)
+#   - 39003 -> latex-compiler (8080)
+#   - 39004 -> embedding-service (8081)
+#
+# Levantar:   docker compose up -d --build
+# Derribar:   docker compose down            (borra contenedores+red)
+# Limpiar:    docker compose down -v         (borra también volúmenes)
+# ============================================================
+
+x-exam-root: &exam_root /home/dpilacuan/my_containers/exam
+
+services:
+  # BDD
+  postgres-db:
+    image: pgvector/pgvector:pg16
+    container_name: exam_postgres_db
+    restart: "no"
+    environment:
+      POSTGRES_USER: exam_user
+      POSTGRES_PASSWORD: exam_password
+      POSTGRES_DB: exam_generator_db
+    ports:
+      - "39000:5432"
+    volumes:
+      - /home/dpilacuan/my_containers/exam/data/postgres:/var/lib/postgresql/data
+
+  # Compilador latex
+  latex-compiler:
+    build:
+      context: /home/dpilacuan/my_containers/exam/docker/latex-compiler
+      dockerfile: Dockerfile
+    container_name: exam_latex_compiler
+    restart: "no"
+    ports:
+      - "39003:8080"
+    volumes:
+      - /home/dpilacuan/my_containers/exam/data/agent_outputs:/app/output
+
+  # Servicio de embeddings (OpenAI-compatible)
+  embedding-service:
+    build:
+      context: /home/dpilacuan/my_containers/exam/docker/embedding-service
+      dockerfile: Dockerfile
+    container_name: exam_embedding_service
+    restart: "no"
+    environment:
+      EMBEDDING_MODEL: BAAI/bge-m3
+      EMBEDDING_DEVICE: cpu
+    ports:
+      - "39004:8081"
+
+  # Aplicación orquestadora (FastAPI) — expone la API REST + el agente
+  exam-app:
+    build:
+      context: /home/dpilacuan/my_containers/exam
+      dockerfile: docker/app/Dockerfile
+    container_name: exam_app
+    restart: "no"
+    environment:
+      DATABASE_URL: postgresql://exam_user:exam_password@postgres-db:5432/exam_generator_db
+      LATEX_COMPILER_URL: http://latex-compiler:8080/compile
+      EMBEDDING_URL: http://embedding-service:8081/v1/embeddings
+      OPENWEBUI_URL: http://open-webui:8080
+      OPENWEBUI_PUBLIC_URL: http://172.28.230.10:39001
+      OPENWEBUI_ADMIN_EMAIL: admin@localhost
+      OPENWEBUI_ADMIN_PASSWORD: admin
+      # LLM remoto vLLM (ya corre en el host)
+      LLM_BASE_URL: http://172.28.230.10:12555/v1
+      LLM_MODEL: deepseek-ai/DeepSeek-V4-Flash-0731
+      # Directorio raíz del material de las materias
+      MATERIAL_ROOT: /app/inputs
+    ports:
+      - "39002:8000"
+    volumes:
+      - /home/dpilacuan/my_containers/exam/data/agent_outputs:/app/output
+      - /home/dpilacuan/my_containers/exam/data/inputs:/app/inputs
+    depends_on:
+      - postgres-db
+      - latex-compiler
+      - embedding-service
+
+  # OpenWebUI: interfaz conversacional para el agente.
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: exam_open_webui
+    restart: "no"
+    ports:
+      - "39001:8080"
+    environment:
+      OPENAI_API_BASE_URLS: http://exam-app:8000/v1
+      OPENAI_API_KEYS: no-key
+      WEBUI_AUTH: "false"
+      WEBUI_SECRET_KEY: "ee95d3be2fee38ba92098420869c00ff4c15e457dbbf18518db9e0542f9b7724"
+      ENABLE_PERSISTENT_CONFIG: "false"
+      WEBUI_NAME: "Generador de Exámenes"
+      DEFAULT_MODELS: "exam-agent"
+      USER_PERMISSIONS_CHAT_CONTROLS: "false"
+      USER_PERMISSIONS_CHAT_VALVES: "false"
+      USER_PERMISSIONS_CHAT_SYSTEM_PROMPT: "false"
+      USER_PERMISSIONS_CHAT_PARAMS: "false"
+      USER_PERMISSIONS_CHAT_MULTIPLE_MODELS: "false"
+      BYPASS_MODEL_ACCESS_CONTROL: "true"
+      USER_PERMISSIONS_CHAT_TEMPORARY: "false"
+      USER_PERMISSIONS_CHAT_TEMPORARY_ENFORCED: "false"
+      USER_PERMISSIONS_CHAT_FILE_UPLOAD: "true"
+      USER_PERMISSIONS_CHAT_WEB_UPLOAD: "false"
+      ENABLE_PLUGINS: "false"
+      ENABLE_NOTES: "false"
+      ENABLE_MEMORIES: "false"
+      ENABLE_CHANNELS: "false"
+      ENABLE_CALENDAR: "false"
+      ENABLE_FOLDERS: "false"
+      ENABLE_AUTOMATIONS: "false"
+      ENABLE_EVALUATION_ARENA_MODELS: "false"
+      ENABLE_MESSAGE_RATING: "false"
+      ENABLE_COMMUNITY_SHARING: "false"
+      ENABLE_IMAGE_GENERATION: "false"
+      ENABLE_TAGS_GENERATION: "false"
+      ENABLE_FOLLOW_UP_GENERATION: "false"
+      ENABLE_TITLE_GENERATION: "false"
+      ENABLE_AUTOCOMPLETE_GENERATION: "false"
+      USER_PERMISSIONS_WORKSPACE_MODELS_ACCESS: "false"
+      USER_PERMISSIONS_WORKSPACE_KNOWLEDGE_ACCESS: "false"
+      USER_PERMISSIONS_WORKSPACE_PROMPTS_ACCESS: "false"
+      USER_PERMISSIONS_WORKSPACE_TOOLS_ACCESS: "false"
+      USER_PERMISSIONS_WORKSPACE_SKILLS_ACCESS: "false"
+      DEFAULT_PROMPT_SUGGESTIONS: '[{"title":["¿Qué materias","hay registradas?"],"content":"¿Qué materias hay registradas?"},{"title":["Genera un examen","de Economía Aplicada"],"content":"Genera un examen de Economía Aplicada"},{"title":["Preguntas de repaso","de Inglés Técnico"],"content":"Hazme preguntas de repaso de Inglés Técnico"},{"title":["Registra una pregunta","sobre elasticidad"],"content":"Registra una pregunta sobre elasticidad en Economía Aplicada"}]'
+    volumes:
+      - /home/dpilacuan/my_containers/exam/data/openwebui:/app/backend/data
+      - /home/dpilacuan/my_containers/exam/docker/openwebui-custom/custom.css:/app/backend/open_webui/static/custom.css:ro
+    depends_on:
+      - exam-app
