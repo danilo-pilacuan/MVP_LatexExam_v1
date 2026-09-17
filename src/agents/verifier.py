@@ -36,13 +36,34 @@ def _validate_priority(v: str) -> str:
     return v
 
 
-def review_question(item: dict) -> AIReviewResult:
+def review_question(item: dict | "GeneratedItem") -> AIReviewResult:
     """Verifica una pregunta (dict de `GeneratedItem`) con el LLM evaluador.
 
     Args:
         item: representación dict de la pregunta (statement, options,
-            expected_answer, solution_explanation, topic, etc.)
+            expected_answer, solution_explanation, topic, etc.). También
+            acepta una instancia `GeneratedItem`.
+
+    El input se re-valida contra `GeneratedItem` antes de enviarlo al LLM:
+    si el dict viene con valores fuera del dominio (enums inválidos,
+    opciones mal formadas), se rechaza sin gastar una llamada al LLM.
     """
+    # Validación del input (acepta dict o GeneratedItem ya validado).
+    if isinstance(item, dict):
+        try:
+            from src.schemas.exam import GeneratedItem
+
+            item = GeneratedItem.model_validate(item)
+        except Exception as e:  # noqa: BLE001
+            # Input inválido: no se puede revisar con garantías.
+            return AIReviewResult(
+                verified_by_ai=False,
+                is_ambiguous=True,
+                answer_correct=False,
+                priority="alta",
+                notes=f"Pregunta inválida (no cumple el esquema): {str(e)[:200]}",
+            )
+
     prompt = (
         "Eres un revisor riguroso de preguntas de examen. Evalúa la pregunta "
         "siguiente y responde con la estructura solicitada.\n\n"

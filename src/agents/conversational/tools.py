@@ -22,6 +22,21 @@ from src.agents.llm import generator_llm
 from src.agents.retrieval import retrieve_chunks, format_context
 from src.bank import service as bank
 from src.schemas.exam import GeneratedItem, RetrievalConfig
+from src.schemas.tools import (
+    AgregarMaterialArchivoInput,
+    BuscarPreguntasInput,
+    COLUMN_LABELS,
+    ConfirmarVerificacionInput,
+    DEFAULT_TABLE_COLUMNS,
+    GenerarExamenPdfInput,
+    GenerarPreguntaInput,
+    GuardarPreguntaInput,
+    GuardarPreguntaPendienteInput,
+    ListarMaterialInput,
+    ListarMateriasInput,
+    RegistrarMateriaInput,
+    TableColumn,
+)
 
 # Temas que quedan FUERA del ámbito del agente (hiperespecialización).
 _OFF_TOPIC_KEYWORDS = [
@@ -78,16 +93,67 @@ def _render_item_for_chat(item: GeneratedItem) -> str:
     return "\n".join(lines)
 
 
-@tool
+def _cell_value(q, column: TableColumn) -> str:
+    """Extrae el valor de una columna para una pregunta (celda de tabla)."""
+    if column == TableColumn.N:
+        return ""  # se rellena con el número de fila
+    if column == TableColumn.ID:
+        return f"`{q.id}`"
+    if column == TableColumn.VERIFIED_BY_HUMAN:
+        return "✅" if q.verified_by_human else "⏳"
+    if column == TableColumn.VERIFIED_BY_AI:
+        return "✅" if q.verified_by_ai else "—"
+    if column == TableColumn.AI_REVIEW_PRIORITY:
+        return (q.ai_review_priority or "—").capitalize()
+    if column == TableColumn.QUESTION_TEXT:
+        # El enunciado puede ser largo: se trunca para que la tabla sea legible.
+        text = (q.question_text or "").replace("\n", " ").replace("|", "\\|")
+        return text[:80] + ("…" if len(text) > 80 else "")
+    if column == TableColumn.EXPECTED_ANSWER:
+        text = (q.expected_answer or "—").replace("\n", " ").replace("|", "\\|")
+        return text[:60] + ("…" if len(text) > 60 else "")
+    value = getattr(q, column.value, None)
+    if value is None:
+        return "—"
+    return str(value).replace("|", "\\|")
+
+
+def _render_questions_table(questions: list, columns: list[TableColumn]) -> str:
+    """Renderiza las preguntas como tabla markdown con las columnas pedidas."""
+    header = [COLUMN_LABELS[c] for c in columns]
+    rows = []
+    for i, q in enumerate(questions, start=1):
+        cells = []
+        for c in columns:
+            if c == TableColumn.N:
+                cells.append(str(i))
+            else:
+                cells.append(_cell_value(q, c))
+        rows.append(cells)
+
+    lines = [
+        "| " + " | ".join(header) + " |",
+        "| " + " | ".join("---" for _ in header) + " |",
+    ]
+    for cells in rows:
+        lines.append("| " + " | ".join(cells) + " |")
+    return "\n".join(lines)
+
+
+@tool(args_schema=BuscarPreguntasInput)
 def buscar_preguntas(
     subject_id: str,
     topic: str | None = None,
     limit: int = 20,
+    columns: list[str] | None = None,
 ) -> str:
     """Recupera preguntas YA EXISTENTES del banco (no genera nuevas).
 
     Úsala cuando el profesor pida 'dame N preguntas de estos temas' sin querer
-    generar nuevas. Devuelve las preguntas almacenadas.
+    generar nuevas. Devuelve las preguntas almacenadas en formato TABLA
+    markdown. Con `columns` el profesor puede pedir qué columnas mostrar
+    (ej. 'dame id, tema y dificultad en tabla'); si se omite se usa el set
+    por defecto.
     """
     rejection = _validate_exam_topic(topic or "")
     if rejection:
@@ -104,16 +170,18 @@ def buscar_preguntas(
             "de esta materia. Puedo generar una nueva si me lo pides."
         )
 
-    lines = [f"📚 Encontré {len(questions)} pregunta(s) del banco:"]
-    for i, q in enumerate(questions, start=1):
-        verified = "✅ verificado humano" if q.verified_by_human else "⏳ sin verificar humano"
-        lines.append(f"{i}. {q.question_text}  [{q.topic} · {q.difficulty} · {verified}]")
-        if q.expected_answer:
-            lines.append(f"   → Respuesta: {q.expected_answer}")
-    return "\n".join(lines)
+    # Resolver columnas pedidas (validadas por args_schema como TableColumn);
+    # si no se pidieron, usar el set por defecto.
+    if columns:
+        table_columns = [TableColumn(c) for c in columns]
+    else:
+        table_columns = list(DEFAULT_TABLE_COLUMNS)
+
+    table = _render_questions_table(questions, table_columns)
+    return f"📚 Encontré {len(questions)} pregunta(s) del banco:\n\n{table}"
 
 
-@tool
+@tool(args_schema=GenerarPreguntaInput)
 def generar_pregunta(
     subject_id: str,
     subject_name: str,
@@ -171,7 +239,7 @@ def generar_pregunta(
     )
 
 
-@tool
+@tool(args_schema=GuardarPreguntaInput)
 def guardar_pregunta(
     subject_id: str,
     topic: str,
@@ -242,7 +310,7 @@ def guardar_pregunta(
     )
 
 
-@tool
+@tool(args_schema=ConfirmarVerificacionInput)
 def confirmar_verificacion_humana(question_id: str) -> str:
     """Marca una pregunta como VERIFICADA POR HUMANO.
 
@@ -260,7 +328,7 @@ def confirmar_verificacion_humana(question_id: str) -> str:
     )
 
 
-@tool
+@tool(args_schema=GuardarPreguntaPendienteInput)
 def guardar_pregunta_pendiente(verificar_humano: bool = False) -> str:
     """Guarda en el banco la ÚLTIMA pregunta generada (pendiente de confirmación).
 
@@ -274,6 +342,18 @@ def guardar_pregunta_pendiente(verificar_humano: bool = False) -> str:
             "No hay una pregunta pendiente de guardar. Primero genera una pregunta "
             "con la tool `generar_pregunta`."
         )
+
+    # Re-validar el pendiente contra el contrato GeneratedItem: el dict quedó
+    # en memoria de módulo y debe cumplir el mismo esquema estricto.
+    try:
+        item_model = GeneratedItem.model_validate(item)
+    except Exception as e:  # noqa: BLE001
+        return (
+            "⚠️ La pregunta pendiente no cumple el esquema esperado y no se guardó. "
+            "Vuelve a generarla con `generar_pregunta`. "
+            f"Detalle: {str(e)[:200]}"
+        )
+    item = item_model.model_dump()
 
     from src.embeddings import embedder
     from src.agents.verifier import review_question
@@ -335,7 +415,7 @@ def guardar_pregunta_pendiente(verificar_humano: bool = False) -> str:
     )
 
 
-@tool
+@tool(args_schema=ListarMateriasInput)
 def listar_materias() -> str:
     """Lista las materias registradas en el sistema.
 
@@ -361,7 +441,7 @@ def listar_materias() -> str:
     return "\n".join(lines)
 
 
-@tool
+@tool(args_schema=GenerarExamenPdfInput)
 def generar_examen_pdf(
     subject_id: str,
     subject_name: str,
@@ -476,7 +556,7 @@ def generar_examen_pdf(
     )
 
 
-@tool
+@tool(args_schema=AgregarMaterialArchivoInput)
 def agregar_material_archivo(
     file_id: str,
     subject_id: str,
@@ -581,7 +661,7 @@ def agregar_material_archivo(
     return "\n".join(lines)
 
 
-@tool
+@tool(args_schema=ListarMaterialInput)
 def listar_material_materia(subject_id: str) -> str:
     """Lista el material de estudio indexado de una materia.
 
@@ -624,7 +704,7 @@ def listar_material_materia(subject_id: str) -> str:
     return "\n".join(lines)
 
 
-@tool
+@tool(args_schema=RegistrarMateriaInput)
 def registrar_materia(nombre: str) -> str:
     """Registra una NUEVA materia en el sistema.
 

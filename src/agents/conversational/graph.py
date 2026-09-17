@@ -18,6 +18,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import StateGraph, START, END
 from langgraph.types import Command, interrupt
 from langchain_core.messages import ToolMessage
+from pydantic import ValidationError
 
 from src.agents.conversational.prompts import SYSTEM_PROMPT
 from src.agents.conversational.state import ConversationalState
@@ -105,6 +106,18 @@ def _call_tools_node(state: ConversationalState) -> dict:
             continue
         try:
             content = tool.invoke(args)
+        except ValidationError as e:
+            # Los args del LLM no cumplen el args_schema (Pydantic) de la tool.
+            # Se devuelve un mensaje accionable para que el LLM corrija los
+            # argumentos y reintente (no crashea el grafo).
+            errors = "; ".join(
+                f"{'.'.join(str(p) for p in err.get('loc', []))}: {err.get('msg', '')}"
+                for err in e.errors()[:5]
+            )
+            content = (
+                f"⚠️ Argumentos inválidos para la tool `{name}`. "
+                f"Corrígelos y vuelve a invocarla. Detalle: {errors}"
+            )
         except Exception as e:  # noqa: BLE001
             content = f"❌ Error al ejecutar {name}: {str(e)[:200]}"
         results.append(ToolMessage(content=content, tool_call_id=tool_id))

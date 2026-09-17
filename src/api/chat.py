@@ -33,12 +33,21 @@ class ChatMessage(BaseModel):
     content: str | list | None = None
 
 
+class ResumePayload(BaseModel):
+    """Payload para reanudar un interrupt (human-in-the-loop)."""
+
+    approved: bool = Field(..., description="¿El profesor aprobó la acción pendiente?")
+    feedback: str | None = Field(
+        default=None, description="Comentario opcional del profesor"
+    )
+
+
 class ChatCompletionRequest(BaseModel):
     model: str = "exam-agent"
     messages: list[ChatMessage]
     stream: bool = False
     thread_id: str | None = Field(default=None, description="ID de conversación persistente")
-    resume: dict | None = Field(
+    resume: ResumePayload | None = Field(
         default=None,
         description="Para reanudar un interrupt (human-in-the-loop): {'approved': bool}",
     )
@@ -118,7 +127,7 @@ async def chat_completions(req: ChatCompletionRequest):
     if req.resume is not None:
         try:
             result = conversational_graph.invoke(
-                Command(resume=req.resume),
+                Command(resume=req.resume.model_dump()),
                 config=config,
             )
         except Exception as e:  # noqa: BLE001
