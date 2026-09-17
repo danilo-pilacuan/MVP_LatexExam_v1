@@ -77,7 +77,7 @@ En este diseño, el examen se construye llenando "ranuras" (slots). Cada `ItemSp
 En este contexto, un "agente" es una **función del grafo** (no un agente autónomo complejo). Cada uno hace una tarea específica del pipeline. La "orquestación" entre ellos la hace LangGraph.
 
 ### 🧠 LLM / modelo de razonamiento
-**LLM** = Large Language Model (modelo de lenguaje grande). Aquí usas **DeepSeek-V4-Flash-0731** servido localmente con **vLLM**. Es un "modelo de razonamiento": puede "pensar" (generar un razonamiento interno) antes de responder. El parámetro `reasoning_effort` controla cuánto "piensa".
+**LLM** = Large Language Model (modelo de lenguaje grande). Aquí usas **GLM-5.3-Flash** servido localmente con **vLLM**. Es un "modelo de razonamiento": puede "pensar" (generar un razonamiento interno) antes de responder. El parámetro `reasoning_effort` controla cuánto "piensa".
 
 ### 🗂 Syllabus
 El **programa o temario** de la materia: la lista de temas, subtemas y su importancia relativa. Es la "materia prima" que el sistema usa como contexto para generar preguntas relevantes.
@@ -98,7 +98,7 @@ graph TB
     end
 
     subgraph "Servidor GPU (H200 - infra interna)"
-        VLLM["vLLM 0.25.1<br/>DeepSeek-V4-Flash-0731<br/>contexto 1M tokens"]
+        VLLM["vLLM 0.25.1<br/>GLM-5.3-Flash<br/>contexto 1M tokens"]
     end
 
     subgraph "Docker Compose (MVP_v1/docker)"
@@ -120,7 +120,7 @@ graph TB
 |---|---|---|---|
 | **Aplicación principal** | Python + LangGraph | `MVP_v1/` | — |
 | **API** | FastAPI | `main.py` | `8000` |
-| **LLM local** | vLLM + DeepSeek-V4-Flash-0731 | `172.28.230.10` | `12555` |
+| **LLM local** | vLLM + GLM-5.3-Flash | `172.28.230.10` | `12555` |
 | **Base de datos** | PostgreSQL 16 + pgvector | Docker (`postgres-db`) | `5432` |
 | **Compilador LaTeX** | FastAPI + TeXLive | Docker (`latex-compiler`) | `8080` |
 | **Servicio de embeddings** | FastAPI + sentence-transformers (bge-m3) | Docker (`embedding-service`) | `8081` |
@@ -454,7 +454,7 @@ Definida en `src/config.py` y `src/agents/llm.py`:
 
 | Parámetro | Valor | Descripción |
 |---|---|---|
-| `llm_model` | `deepseek-ai/DeepSeek-V4-Flash-0731` | Modelo servido |
+| `llm_model` | `zai-org/GLM-5.3-Flash` | Modelo servido |
 | `llm_base_url` | `http://172.28.230.10:12555/v1` | Endpoint vLLM |
 | `llm_max_tokens` | `65536` | Salida máxima por llamada |
 | `llm_temperature` | `0.7` | Temperatura del generador |

@@ -83,7 +83,7 @@ services:
       OPENWEBUI_ADMIN_PASSWORD: admin
       # LLM remoto vLLM (ya corre en el host)
       LLM_BASE_URL: http://172.28.230.10:12555/v1
-      LLM_MODEL: deepseek-ai/DeepSeek-V4-Flash-0731
+      LLM_MODEL: zai-org/GLM-5.3-Flash
       # Directorio raíz del material de las materias
       MATERIAL_ROOT: /app/inputs
     ports:

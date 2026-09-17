@@ -58,13 +58,16 @@ WRITE_TOOLS = {"guardar_pregunta", "guardar_pregunta_pendiente", "confirmar_veri
 def _make_llm():
     """LLM del agente conversacional con las tools vinculadas.
 
-    IMPORTANTE: se usa `reasoning_effort="none"` (igual que el pipeline batch).
-    DeepSeek-V4-Flash es un modelo de razonamiento: con reasoning_effort > none,
-    vLLM pone el output en el campo `reasoning` y deja `content` VACÍO, lo que
-    hace que las respuestas del chat vuelvan vacías. Con `none`, el contenido
-    sale en `content` y el chat funciona correctamente.
+    IMPORTANTE: se usa `reasoning_effort="low"` (config `llm_reasoning_chat`).
+    GLM-5.3-Flash es un modelo de razonamiento con comportamiento INVERSO a
+    DeepSeek: con `none` escribe su razonamiento directamente en `content`
+    (respuestas del chat "ensuciadas"); con `low` el contenido sale limpio.
+    Verificado con el servidor vLLM local.
     """
-    llm = get_llm(reasoning_effort="none", temperature=0.4)
+    llm = get_llm(
+        reasoning_effort=settings.llm_reasoning_chat,
+        temperature=0.4,
+    )
     return llm.bind_tools(TOOLS)
 
 

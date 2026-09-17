@@ -8,13 +8,14 @@ class Settings(BaseSettings):
     openai_api_key: str = "no-key"  # placeholder; la infra local no valida keys reales
 
     # --- Proveedor LLM (infra local OpenAI-compatible) ---
-    llm_model: str = "deepseek-ai/DeepSeek-V4-Flash-0731"
+    llm_model: str = "zai-org/GLM-5.3-Flash"
     llm_base_url: str = "http://172.28.230.10:12555/v1"
     llm_temperature: float = 0.7
     # El servidor vLLM acepta hasta ~100k+ tokens de salida (probado) y el
-    # modelo soporta ~384k de salida con 1M de contexto. 65536 da margen
-    # amplio para generar el examen completo en una sola pasada o ítems
-    # muy elaborados, sin acercarse a los límites del servidor.
+    # modelo soporta 1M de contexto (hasta 131072 tokens de salida según su
+    # configuración). 65536 da margen amplio para generar el examen completo
+    # en una sola pasada o ítems muy elaborados, sin acercarse a los límites
+    # del servidor.
     llm_max_tokens: int = 65536
     # Nivel de razonamiento por nodo. El servidor soporta 7 niveles:
     # none | minimal | low | medium | high | xhigh | max
@@ -24,6 +25,12 @@ class Settings(BaseSettings):
     # Por eso Generador y Evaluador usan `none` para producir JSON en content.
     llm_reasoning_generator: str = "none"
     llm_reasoning_evaluator: str = "none"
+    # Nivel de razonamiento del agente conversacional (chat).
+    # IMPORTANTE (GLM-5.3-Flash): a diferencia de DeepSeek, con `none` el
+    # modelo escribe su razonamiento DIRECTAMENTE en `content` (respuestas
+    # del chat "ensuciadas" con texto de análisis). Con `low` el contenido
+    # sale limpio y el structured output sigue funcionando (verificado).
+    llm_reasoning_chat: str = "low"
     # Temperatura más baja para el evaluador (juicio más determinista).
     llm_temperature_evaluator: float = 0.2
 

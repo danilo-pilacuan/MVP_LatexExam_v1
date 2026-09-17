@@ -1,12 +1,12 @@
 # Análisis de Costos: Modelo Local vs. Nube
 
-> **Elemento de acción 6** — Comparativa de costos entre el modelo local (vLLM + DeepSeek-V4-Flash-0731) y modelos en la nube (OpenAI/Claude), para decidir el despliegue final y justificar la elección en la tesis.
+> **Elemento de acción 6** — Comparativa de costos entre el modelo local (vLLM + GLM-5.3-Flash) y modelos en la nube (OpenAI/Claude), para decidir el despliegue final y justificar la elección en la tesis.
 
 ---
 
 ## 1. Modelo actual (local)
 
-- **Modelo:** `deepseek-ai/DeepSeek-V4-Flash-0731` servido con **vLLM** en una GPU interna (H200).
+- **Modelo:** `zai-org/GLM-5.3-Flash` servido con **vLLM** en una GPU interna (H200).
 - **Costo:** hardware + electricidad + mantenimiento (capex/opex), **sin costo por token**.
 - **Ventajas:** privacidad (los datos no salen de la infraestructura), sin costo marginal por uso, control total.
 - **Desventajas:** requiere GPU dedicada, mantenimiento, y el costo es fijo aunque el uso sea bajo.
