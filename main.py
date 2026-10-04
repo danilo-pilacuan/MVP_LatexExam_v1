@@ -43,17 +43,26 @@ OUTPUT_DIR = next((p for p in _CANDIDATE_OUTPUT if p.exists()), _CANDIDATE_OUTPU
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
+# Tipos de archivo servibles por GET /output (PDF de exámenes y exportaciones).
+_ALLOWED_OUTPUT_MIME = {
+    ".pdf": "application/pdf",
+    ".csv": "text/csv",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+}
+
+
 @app.get("/output/{filename}")
 def download_output(filename: str):
-    """Sirve un PDF generado (examen) para descargarlo desde el navegador."""
+    """Sirve un archivo generado (PDF de examen, CSV/XLSX de exportación)."""
     # Evitar path traversal: solo el nombre base del archivo.
     safe = Path(filename).name
     file_path = OUTPUT_DIR / safe
-    if not file_path.exists() or file_path.suffix.lower() != ".pdf":
+    mime = _ALLOWED_OUTPUT_MIME.get(file_path.suffix.lower())
+    if not file_path.exists() or mime is None:
         raise HTTPException(status_code=404, detail="Archivo no encontrado")
     return FileResponse(
         file_path,
-        media_type="application/pdf",
+        media_type=mime,
         filename=safe,
     )
 

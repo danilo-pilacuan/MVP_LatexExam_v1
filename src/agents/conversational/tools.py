@@ -28,6 +28,7 @@ from src.schemas.tools import (
     COLUMN_LABELS,
     ConfirmarVerificacionInput,
     DEFAULT_TABLE_COLUMNS,
+    ExportarPreguntasInput,
     GenerarExamenPdfInput,
     GenerarPreguntaInput,
     GuardarPreguntaInput,
@@ -553,6 +554,159 @@ def generar_examen_pdf(
         f"- Materia: **{subject_name}**\n"
         f"- Preguntas: {len(result.get('approved_items', []))}{version_note}\n\n"
         f"{attachment_md}"
+    )
+
+
+@tool(args_schema=ExportarPreguntasInput)
+def exportar_preguntas(
+    subject_id: str,
+    formato: str = "csv",
+    topic: str | None = None,
+    limit: int = 100,
+) -> str:
+    """EXPORTA las preguntas del banco a un archivo CSV o Excel (xlsx).
+
+    Úsala cuando el profesor pida 'exporta las preguntas', 'descárgamelas en
+    Excel/CSV' o quiera llevar el banco a una hoja de cálculo. Genera el
+    archivo con TODAS las columnas del banco (enunciado, opciones, respuesta,
+    solución, verificación, etc.) y lo sube como adjunto descargable al chat.
+
+    Args:
+        subject_id: id de la materia (UUID).
+        formato: 'csv' o 'xlsx' (Excel).
+        topic: filtro opcional por tema exacto.
+        limit: nº máximo de preguntas a exportar (1-500).
+    """
+    import csv
+    import io
+    from datetime import datetime
+
+    from src.api.openwebui import upload_file_to_openwebui, build_attachment_markdown
+
+    fmt = (formato or "csv").strip().lower()
+    if fmt not in ("csv", "xlsx"):
+        fmt = "csv"
+
+    questions = bank.list_questions(
+        subject_id=subject_id,
+        topic=topic,
+        limit=limit,
+    )
+    if not questions:
+        return (
+            f"No hay preguntas en el banco para exportar "
+            f"(tema: '{topic or 'todas'}')."
+        )
+
+    # Columnas completas del banco (en orden legible para una hoja de cálculo).
+    export_columns = [
+        TableColumn.N,
+        TableColumn.ID,
+        TableColumn.TOPIC,
+        TableColumn.SUBTOPIC,
+        TableColumn.BLOOM_LEVEL,
+        TableColumn.DIFFICULTY,
+        TableColumn.QUESTION_TYPE,
+        TableColumn.QUESTION_TEXT,
+        TableColumn.OPTIONS,
+        TableColumn.EXPECTED_ANSWER,
+        TableColumn.SOLUTION_EXPLANATION,
+        TableColumn.POINTS,
+        TableColumn.VERIFIED_BY_HUMAN,
+        TableColumn.VERIFIED_BY_AI,
+        TableColumn.AI_REVIEW_PRIORITY,
+        TableColumn.SOURCE,
+        TableColumn.CREATED_AT,
+    ]
+
+    def _plain(q, column: TableColumn) -> str:
+        """Valor plano de una celda (sin markdown, para CSV/Excel)."""
+        if column == TableColumn.N:
+            return ""
+        if column == TableColumn.VERIFIED_BY_HUMAN:
+            return "sí" if q.verified_by_human else "no"
+        if column == TableColumn.VERIFIED_BY_AI:
+            return "sí" if q.verified_by_ai else "no"
+        if column == TableColumn.OPTIONS:
+            opts = q.options or []
+            if not opts:
+                return ""
+            parts = []
+            for i, o in enumerate(opts, start=1):
+                mark = "*" if o.get("is_correct") else ""
+                parts.append(f"{i}) {mark}{o.get('text', '')}")
+            return " | ".join(parts)
+        value = getattr(q, column.value, None)
+        if value is None:
+            return ""
+        return str(value).replace("\n", " ")
+
+    rows = []
+    for i, q in enumerate(questions, start=1):
+        row = []
+        for c in export_columns:
+            if c == TableColumn.N:
+                row.append(i)
+            else:
+                row.append(_plain(q, c))
+        rows.append(row)
+
+    headers = [COLUMN_LABELS[c] for c in export_columns]
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    # Directorio de salida (compartido con latex-compiler y servido por /output).
+    from main import OUTPUT_DIR
+
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    try:
+        if fmt == "xlsx":
+            from openpyxl import Workbook
+
+            wb = Workbook()
+            ws = wb.active
+            ws.title = "Preguntas"
+            ws.append(headers)
+            for row in rows:
+                ws.append(row)
+            # Ajustar ancho de columnas (cap a 60 chars para no deformar).
+            for col_idx, h in enumerate(headers, start=1):
+                width = max((len(str(row[col_idx - 1])) for row in rows), default=10)
+                ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = min(max(width + 2, 10), 60)
+            out_path = OUTPUT_DIR / f"preguntas_{stamp}.xlsx"
+            wb.save(out_path)
+            mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        else:
+            buf = io.StringIO()
+            writer = csv.writer(buf, quoting=csv.QUOTE_ALL)
+            writer.writerow(headers)
+            writer.writerows(rows)
+            out_path = OUTPUT_DIR / f"preguntas_{stamp}.csv"
+            out_path.write_text("\ufeff" + buf.getvalue(), encoding="utf-8")  # BOM para Excel
+            mime = "text/csv"
+    except Exception as e:  # noqa: BLE001
+        return f"❌ No pude generar el archivo de exportación: {str(e)[:200]}"
+
+    # Subir el archivo a Open WebUI como adjunto nativo del chat.
+    try:
+        upload = upload_file_to_openwebui(out_path, mime_type=mime)
+        titulo = (
+            f"📊 **Exportación de {len(questions)} pregunta(s) en Excel adjunta al chat.**"
+            if fmt == "xlsx"
+            else f"📊 **Exportación de {len(questions)} pregunta(s) en CSV adjunta al chat.**"
+        )
+        etiqueta = "Descargar el Excel" if fmt == "xlsx" else "Descargar el CSV"
+        attachment_md = build_attachment_markdown(upload, titulo=titulo, etiqueta=etiqueta)
+    except Exception as e:  # noqa: BLE001
+        # Fallback: enlace HTTP directo servido por la API.
+        attachment_md = (
+            f"📥 [Descargar {out_path.name}](http://localhost:8000/output/{out_path.name})\n\n"
+            f"*(No se pudo adjuntar a Open WebUI: {str(e)[:120]})*"
+        )
+
+    return (
+        f"✅ Exporté **{len(questions)} pregunta(s)** del banco "
+        f"(formato: {fmt.upper()}).\n\n{attachment_md}"
     )
 
 

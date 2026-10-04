@@ -26,6 +26,7 @@ from src.agents.conversational.tools import (
     agregar_material_archivo,
     buscar_preguntas,
     confirmar_verificacion_humana,
+    exportar_preguntas,
     generar_examen_pdf,
     generar_pregunta,
     guardar_pregunta,
@@ -40,6 +41,7 @@ from src.config import settings
 TOOLS = [
     listar_materias,
     buscar_preguntas,
+    exportar_preguntas,
     generar_pregunta,
     guardar_pregunta,
     guardar_pregunta_pendiente,

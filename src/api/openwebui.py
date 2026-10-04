@@ -31,18 +31,25 @@ def _login_token() -> str:
     return resp.json()["token"]
 
 
-def upload_file_to_openwebui(pdf_path: str | Path, filename: str | None = None) -> dict:
-    """Sube un PDF a Open WebUI y devuelve el resultado (id, path, etc.)."""
+def upload_file_to_openwebui(
+    pdf_path: str | Path,
+    filename: str | None = None,
+    mime_type: str = "application/pdf",
+) -> dict:
+    """Sube un archivo a Open WebUI y devuelve el resultado (id, path, etc.).
+
+    Reutilizable para PDFs de exámenes y exportaciones CSV/XLSX del banco.
+    """
     pdf_path = Path(pdf_path)
     if not pdf_path.exists():
-        raise FileNotFoundError(f"No existe el PDF: {pdf_path}")
+        raise FileNotFoundError(f"No existe el archivo: {pdf_path}")
 
     token = _login_token()
     headers = {"Authorization": f"Bearer {token}"}
     fname = filename or pdf_path.name
 
     with open(pdf_path, "rb") as f:
-        files = {"file": (fname, f, "application/pdf")}
+        files = {"file": (fname, f, mime_type)}
         resp = requests.post(
             f"{settings.openwebui_url}/api/v1/files/",
             headers=headers,
@@ -53,20 +60,27 @@ def upload_file_to_openwebui(pdf_path: str | Path, filename: str | None = None) 
     return resp.json()
 
 
-def build_attachment_markdown(upload_result: dict) -> str:
+def build_attachment_markdown(
+    upload_result: dict,
+    titulo: str = "📄 **Examen en PDF adjunto al chat.**",
+    etiqueta: str = "Descargar el PDF",
+) -> str:
     """Construye el markdown con el enlace al adjunto nativo de Open WebUI.
 
     Open WebUI sirve los archivos subidos en:
       /api/v1/files/{file_id}/content
+
+    `titulo` y `etiqueta` permiten reutilizar el formato para otros adjuntos
+    (ej. exportaciones CSV/XLSX del banco de preguntas).
     """
     file_id = upload_result.get("id", "")
-    filename = upload_result.get("filename", "examen.pdf")
+    filename = upload_result.get("filename", "archivo")
     # URL pública accesible desde el navegador del usuario.
     content_url = f"{settings.openwebui_public_url}/api/v1/files/{file_id}/content"
     return (
-        f"📄 **Examen en PDF adjunto al chat.**\n"
+        f"{titulo}\n"
         f"Archivo: **{filename}**\n"
-        f"📥 [Descargar el PDF]({content_url})\n\n"
+        f"📥 [{etiqueta}]({content_url})\n\n"
         f"*También disponible en: `{content_url}`*"
     )
 

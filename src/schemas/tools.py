@@ -58,6 +58,8 @@ class TableColumn(str, Enum):
     QUESTION_TYPE = "question_type"  # tipo de pregunta
     QUESTION_TEXT = "question_text"  # enunciado
     EXPECTED_ANSWER = "expected_answer"  # respuesta esperada
+    OPTIONS = "options"              # opciones de respuesta (opcion_multiple, etc.)
+    SOLUTION_EXPLANATION = "solution_explanation"  # solución / justificación
     POINTS = "points"                # puntaje
     VERIFIED_BY_HUMAN = "verified_by_human"  # verificado por humano
     VERIFIED_BY_AI = "verified_by_ai"        # verificado por IA
@@ -87,6 +89,8 @@ COLUMN_LABELS: dict[TableColumn, str] = {
     TableColumn.QUESTION_TYPE: "Tipo",
     TableColumn.QUESTION_TEXT: "Pregunta",
     TableColumn.EXPECTED_ANSWER: "Respuesta",
+    TableColumn.OPTIONS: "Opciones",
+    TableColumn.SOLUTION_EXPLANATION: "Solución",
     TableColumn.POINTS: "Puntos",
     TableColumn.VERIFIED_BY_HUMAN: "Verif. humano",
     TableColumn.VERIFIED_BY_AI: "Verif. IA",
@@ -252,6 +256,25 @@ class GenerarExamenPdfInput(_StrictModel):
     )
     num_versions: int = Field(
         default=1, ge=1, le=10, description="Nº de versiones barajadas del examen (1-10)"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Exportación del banco
+# ---------------------------------------------------------------------------
+class ExportarPreguntasInput(_StrictModel):
+    """Input de `exportar_preguntas`."""
+
+    subject_id: str = Field(..., description="Id de la materia (UUID)")
+    formato: str = Field(
+        default="csv",
+        description="Formato del archivo de exportación: 'csv' o 'xlsx' (Excel)",
+    )
+    topic: str | None = Field(
+        default=None, description="Filtro opcional por tema exacto"
+    )
+    limit: int = Field(
+        default=100, ge=1, le=500, description="Nº máximo de preguntas a exportar (1-500)"
     )
 
 
