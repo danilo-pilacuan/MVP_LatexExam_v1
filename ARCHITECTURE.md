@@ -22,6 +22,7 @@ Repo de referencia con material de estudio: https://github.com/tobiager/UNNE-LSI
 10. [Base de datos y migraciones](#-base-de-datos-y-migraciones)
 11. [Renderizado LaTeX](#-renderizado-latex)
 12. [Estado del proyecto](#-estado-del-proyecto)
+13. [Arquitectura objetivo del monorepo (próxima reestructuración)](#-arquitectura-objetivo-del-monorepo-próxima-reestructuración)
 
 ---
 
@@ -692,4 +693,35 @@ alembic upgrade head
 # 6. OpenWebUI (interfaz conversacional)
 #    Abrir http://localhost:3000  → conecta al agente automáticamente
 ```
+
+---
+
+## 🏛 Arquitectura objetivo del monorepo (próxima reestructuración)
+
+> **Nota:** esta sección describe el diseño aprobado pero **aún no aplicado**. El código actual sigue en la estructura monolítica documentada arriba. El diseño completo está en [docs/arquitectura-objetivo.md](docs/arquitectura-objetivo.md).
+
+Con la introducción del frontend propio (ver [plan-frontendChatEmbebido.prompt.md](plan-frontendChatEmbebido.prompt.md)), el repositorio migrará de un proyecto Python único (`src/` + `main.py` en la raíz) a un **monorepo por apps**, donde la raíz es la raíz de proyectos y cada aplicación tiene su propio `src`, tests, Dockerfile y dependencias, siguiendo arquitectura limpia y las convenciones de cada framework (create-vue/Vite para el frontend, estructura routers/schemas/services de FastAPI para las APIs).
+
+```
+MVP_v1/
+├── apps/
+│   ├── frontend/            # Vue 3 + Vite + TS + Pinia (create-vue) — chat embebido + pantallas
+│   ├── exam-app/            # FastAPI — API pública/BFF: SSE chat, adjuntos, REST, WS bus
+│   ├── agents-backend/      # LangGraph — exam_pipeline + conversational + shared (llm, RAG, events)
+│   ├── latex-compiler/      # microservicio FastAPI + TeXLive
+│   └── embedding-service/   # microservicio FastAPI + sentence-transformers
+├── libs/
+│   └── core/                # shared kernel: modelos SQLAlchemy, banco (escritura segura),
+│                            # schemas, migraciones Alembic, clientes de microservicios, config
+├── data/ · docker/ · deploy/ · docs/ · scripts/
+└── alembic.ini
+```
+
+Reglas clave:
+
+- **Dependencias hacia adentro**: `frontend → exam-app → agents-backend → libs/core`. Ninguna capa importa "hacia arriba".
+- **Arquitectura limpia por app**: dominio → aplicación → interface adapters → infraestructura. Los routers de exam-app nunca tocan LangGraph ni la BD directamente; pasan por `services/` y puertos en `domain/`.
+- **Eventos tipados**: las tools del agente emiten eventos versionados (`question_generated`, `artifact_ready`, …) que exam-app reenvía por SSE y el frontend renderiza como widgets.
+- **Control de versiones**: cada app/lib vivirá en su **propio repositorio Git**, encapsulados por un repo raíz (meta-repo) mediante **submódulos git** — el meta-repo fija qué commit de cada app compone cada release del sistema. Detalle completo en [docs/arquitectura-objetivo.md](docs/arquitectura-objetivo.md), §8.
+- La migración se ejecutará como **Fase 0** del plan de frontend, con `git mv` para conservar historial y criterio de aceptación: tests verdes + pipeline end-to-end generando PDF.
 
